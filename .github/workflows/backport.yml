@@ -10,10 +10,7 @@ jobs:
     runs-on: ubuntu-18.04
     name: Backport
     steps:
-      - name: Backport Bot
-        uses: Gaurav0/backport@v1.0.26
+      - name: Backport
+        uses: tibdex/backport@v1
         with:
-          bot_username: k3s-io-bot-test
-          bot_token: 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
-          bot_token_key: 1lifbp89vbq23948hucnapw91asdfa234f9av8nc
           github_token: ${{ secrets.GITHUB_TOKEN }}
