@@ -39,6 +39,7 @@ func main() {
 	}
 
 	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil && !errors.Is(err, context.Canceled) {
+		logrus.Info("Im a PR that needs backporting")
 		logrus.Fatal(err)
 	}
 }
