@@ -1,0 +1,68 @@
+name: E2E Test Coverage
+on: 
+  push:
+    paths-ignore:
+      - "**.md"
+    #   - "channel.yaml"
+    #   - "install.sh"
+    #   - "tests/snapshotter/**"
+    #   - "tests/install/**"
+    #   - "tests/cgroup/**"
+    #   - ".github/**"
+    #   - "!.github/workflows/integration.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+    #   - "channel.yaml"
+    #   - "install.sh"
+    #   - "tests/snapshotter/**"
+    #   - "tests/install/**"
+    #   - "tests/cgroup/**"
+    #   - ".github/**"
+    #   - "!.github/workflows/integration.yaml"
+  workflow_dispatch: {}
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Make"
+      run: DOCKER_BUILDKIT=1 SKIP_VALIDATE=1 make
+    - name: "Upload k3s binary"
+      uses: actions/upload-artifact@v2
+      with:
+        name: k3s
+        path: dist/artifacts/k3s
+  test:
+    needs: build
+    name: E2E Tests
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+    - name: "Download k3s binary"
+      uses: actions/download-artifact@v3
+      with:
+        name: k3s
+    - name: Install Open VPN
+      run: sudo apt-get install openvpn
+    - name: Connect to Fremont VPN
+      uses: aduriseti/ovpn3-connect-action@v1
+      with:
+        ovpn-config:  ${{ secrets.OVPN_CONFIG }}
+        vpn-user:     ${{ secrets.OVPN_USER }}
+        vpn-pass:     ${{ secrets.OVPN_PASS }}
+    - name: Run Integration Tests
+      run: |
+        echo "HELLO WORLD"
+        ping -c 5 ${{ secrets.PR_RUNNER_IP }}
+        ssh -c "echo hello2" -i ${{ secrets.PR_RUNNER_PERM }} k3sauto@${{ secrets.PR_RUNNER_IP }}
+    - name: Kill VPN Connection
+      if: always()
+      run: |
+        sudo pkill openvpn  
+ 
