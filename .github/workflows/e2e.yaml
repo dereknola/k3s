@@ -27,10 +27,9 @@ jobs:
     steps:
     - name: "Checkout K3s"
       uses: actions/checkout@v3
-      
-    - name: Build K3s
-      run: |
-        echo "hello"
+
+    - name: Build K3s binary
+      run: DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 make
 
     - name: Connect to Fremont VPN
       uses: aduriseti/ovpn3-connect-action@v1
@@ -48,16 +47,19 @@ jobs:
         source: "./*"
         target: "k3s-${{ github.sha }}"
 
-    - name: Prepare runner for E2E tests
+    - name: Run E2E tests
       uses: appleboy/ssh-action@v0.1.5
       with:
         host: ${{ secrets.PR_RUNNER_IP }}
         username: ${{ secrets.PR_RUNNER_USER }}
         key: ${{ secrets.PR_RUNNER_PERM }}
         script_stop: true
+        #./scripts/run-tests.sh
         script: |
-          rm -rf k3s*
+          cd k3s-${{ github.sha }}/tests/e2e
           ls -la
+          ls -la ../../../dist/artifacts
+          
 
     - name: Save logs on failure
       if: failure()
@@ -69,6 +71,7 @@ jobs:
         script: |
           mkdir -p failed_logs/${{ github.sha }}
           find ./k3s-${{ github.sha }}/tests/e2e -name \*.log -exec cp {} failed_logs/${{ github.sha }} \;
+          rm -rf ./k3s-${{ github.sha }}
 
     - name: Kill VPN Connection
       if: always()
