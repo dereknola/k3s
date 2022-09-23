@@ -27,15 +27,18 @@ jobs:
     steps:
     - name: "Checkout K3s"
       uses: actions/checkout@v3
+      
     - name: Build K3s
       run: |
         echo "hello"
+
     - name: Connect to Fremont VPN
       uses: aduriseti/ovpn3-connect-action@v1
       with:
         ovpn-config:  ${{ secrets.OVPN_CONFIG }}
         vpn-user:     ${{ secrets.OVPN_USER }}
         vpn-pass:     ${{ secrets.OVPN_PASS }}
+
     - name: Transfer K3s to E2E runner
       uses: appleboy/scp-action@master
       with:
@@ -44,6 +47,7 @@ jobs:
         key: ${{ secrets.PR_RUNNER_PERM }}
         source: "./*"
         target: "k3s-${{ github.sha }}"
+
     - name: Prepare runner for E2E tests
       uses: appleboy/ssh-action@v0.1.5
       with:
@@ -52,8 +56,19 @@ jobs:
         key: ${{ secrets.PR_RUNNER_PERM }}
         script_stop: true
         script: |
-          # rm -rf k3s
+          rm -rf k3s*
           ls -la
+
+    - name: Save logs on failure
+      if: failure()
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.PR_RUNNER_IP }}
+        username: ${{ secrets.PR_RUNNER_USER }}
+        key: ${{ secrets.PR_RUNNER_PERM }}
+        script: |
+          mkdir -p failed_logs/${{ github.sha }}
+          find ./k3s-${{ github.sha }}/tests/e2e -name \*.log -exec cp {} failed_logs/${{ github.sha }} \;
 
     - name: Kill VPN Connection
       if: always()
