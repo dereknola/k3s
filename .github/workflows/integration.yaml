@@ -22,7 +22,7 @@ on:
       - "!.github/workflows/integration.yaml"
   workflow_dispatch: {}
 jobs:
-  build-k3s:
+  build:
     uses: ./.github/workflows/build-k3s.yaml
   test:
     needs: build

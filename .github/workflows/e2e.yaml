@@ -22,7 +22,7 @@ on:
 jobs:
   # we split the build into a separate job to make testing reruns faster
   # if build passes, later runs will skip this job and reuse the artifacts
-  build-k3s:
+  build:
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-repo: true
