@@ -9,15 +9,15 @@ on:
       - "!tests/e2e**"
       - ".github/**"
       - "!.github/workflows/e2e.yaml"
-  # pull_request:
-  #   paths-ignore:
-  #     - "**.md"
-  #     - "channel.yaml"
-  #     - "install.sh"
-  #     - "tests/**"
-  #     - "!tests/e2e**"
-  #     - ".github/**"
-  #     - "!.github/workflows/e2e.yaml"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "channel.yaml"
+      - "install.sh"
+      - "tests/**"
+      - "!tests/e2e**"
+      - ".github/**"
+      - "!.github/workflows/e2e.yaml"
   workflow_dispatch: {}
 jobs:
   # we split the build into a separate job to make testing reruns faster
