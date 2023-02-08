@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
+	"sigs.k8s.io/yaml"
 )
 
 func Agent(ctx context.Context, nodeConfig *daemonconfig.Node, proxy proxy.Proxy) error {
@@ -44,11 +46,35 @@ func startKubeProxy(ctx context.Context, cfg *daemonconfig.Agent) error {
 }
 
 func startKubelet(ctx context.Context, cfg *daemonconfig.Agent) error {
-	argsMap := kubeletArgs(cfg)
 
-	args := daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
+	// If the user passes a `--kublet-arg=--config=<CONFIG>", we launch kubelet with command line flags.
+	// If no custom config file is given, we launch with a kubelet config file and minimal flags.
+	var userConfig bool
+	var args []string
+	for _, arg := range cfg.ExtraKubeletArgs {
+		if strings.HasPrefix(arg, "--config") {
+			userConfig = true
+		}
+	}
+
+	var argsMap map[string]string
+	if userConfig {
+		argsMap = kubeletCLIArgs(cfg)
+		args = daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
+	} else {
+		kubeletConfig, argsMap := kubeletConfig(cfg)
+		args = daemonconfig.GetArgs(argsMap, cfg.ExtraKubeletArgs)
+		args = append(args, "--config="+cfg.KubeletConfigFile)
+		yaml, err := yaml.Marshal(kubeletConfig)
+		if err != nil {
+			logrus.Fatalf("Failed to marshal kubelet config: %v", err)
+		}
+		if err := os.WriteFile(cfg.KubeletConfigFile, yaml, 0644); err != nil {
+			logrus.Fatalf("Failed to write kubelet config file: %v", err)
+		}
+		logrus.Debugf("Running kubelet with config %s", string(yaml))
+	}
 	logrus.Infof("Running kubelet %s", daemonconfig.ArgString(args))
-
 	return executor.Kubelet(ctx, args)
 }
 

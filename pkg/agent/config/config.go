@@ -596,6 +596,7 @@ func get(ctx context.Context, envInfo *cmds.Agent, proxy proxy.Proxy) (*config.N
 	nodeConfig.AgentConfig.DisableNPC = controlConfig.DisableNPC
 	nodeConfig.AgentConfig.Rootless = envInfo.Rootless
 	nodeConfig.AgentConfig.PodManifests = filepath.Join(envInfo.DataDir, "agent", DefaultPodManifestPath)
+	nodeConfig.AgentConfig.KubeletConfigFile = filepath.Join(envInfo.DataDir, "agent", "kubelet-config.yaml")
 	nodeConfig.AgentConfig.ProtectKernelDefaults = envInfo.ProtectKernelDefaults
 	nodeConfig.AgentConfig.DisableServiceLB = envInfo.DisableServiceLB
 

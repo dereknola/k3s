@@ -13,11 +13,17 @@ import (
 
 // JoinIPs stringifies and joins a list of IP addresses with commas.
 func JoinIPs(elems []net.IP) string {
+	strs := JoinIPsSlice(elems)
+	return strings.Join(strs, ",")
+}
+
+// JoinIPsSlice converts IP addresses to string slice.
+func JoinIPsSlice(elems []net.IP) []string {
 	var strs []string
 	for _, elem := range elems {
 		strs = append(strs, elem.String())
 	}
-	return strings.Join(strs, ",")
+	return strs
 }
 
 // JoinIPNets stringifies and joins a list of IP networks with commas.

@@ -14,11 +14,9 @@ import (
 	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/rancher/wrangler/pkg/leader"
-	"github.com/sirupsen/logrus"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	utilsnet "k8s.io/utils/net"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -96,6 +94,7 @@ type Agent struct {
 	KubeConfigKubelet       string
 	KubeConfigKubeProxy     string
 	KubeConfigK3sController string
+	KubeletConfigFile       string
 	NodeIP                  string
 	NodeIPs                 []net.IP
 	NodeExternalIP          string
@@ -364,12 +363,15 @@ func (a ArgString) String() string {
 	return b.String()
 }
 
-func overrideAndSortArgs(initialArgs map[string]string, extraArgs []string) map[string][]string {
+// GetArgs appends extra arguments to existing arguments with logic to override any default
+// arguments whilst also allowing to prefix and suffix default string slice arguments.
+func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
+	const hyphens = "--"
 
 	multiArgs := make(map[string][]string)
 
 	for _, unsplitArg := range extraArgs {
-		splitArg := strings.SplitN(strings.TrimPrefix(unsplitArg, "--"), "=", 2)
+		splitArg := strings.SplitN(strings.TrimPrefix(unsplitArg, hyphens), "=", 2)
 		arg := splitArg[0]
 		value := "true"
 		if len(splitArg) > 1 {
@@ -416,16 +418,6 @@ func overrideAndSortArgs(initialArgs map[string]string, extraArgs []string) map[
 	for arg, value := range initialArgs {
 		multiArgs[arg] = []string{value}
 	}
-	return multiArgs
-}
-
-// GetArgs appends extra arguments to existing arguments with logic to override any default
-// arguments whilst also allowing to prefix and suffix default string slice arguments.
-func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
-
-	const hyphens = "--"
-
-	multiArgs := overrideAndSortArgs(initialArgs, extraArgs)
 
 	// Get args so we can output them sorted whilst preserving the order of
 	// repeated keys
@@ -445,40 +437,4 @@ func GetArgs(initialArgs map[string]string, extraArgs []string) []string {
 	}
 
 	return args
-}
-
-func GetYaml(initialArgs map[string]string, extraArgs []string) string {
-
-	combinedArgs := overrideAndSortArgs(initialArgs, extraArgs)
-
-	// Get args so we can output them sorted whilst preserving the order of
-	// repeated keys
-	var keys []string
-	for arg := range combinedArgs {
-		keys = append(keys, arg)
-	}
-	sort.Strings(keys)
-
-	singleArgs := make(map[string]string)
-	mutliArgs := make(map[string][]string)
-	for k, v := range combinedArgs {
-		if len(v) == 1 {
-			singleArgs[k] = v[0]
-		} else {
-			mutliArgs[k] = v
-		}
-	}
-	b1, err := yaml.Marshal(singleArgs)
-	if err != nil {
-		logrus.Fatalf("error: %v", err)
-	}
-	if len(mutliArgs) == 0 {
-		return string(b1)
-	}
-	b2, err := yaml.Marshal(mutliArgs)
-	if err != nil {
-		logrus.Fatalf("error: %v", err)
-	}
-	return string(b1) + string(b2)
-
 }
