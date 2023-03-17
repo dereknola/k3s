@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	apiserverconfigv1 "k8s.io/apiserver/pkg/apis/config/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/pager"
 	"k8s.io/client-go/tools/record"
@@ -127,14 +128,14 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	}
 
 	// Remove last key
-	curKeys, err := GetEncryptionKeys(h.controlConfig.Runtime)
+	curKeys, _, err := GetEncryptionKeys(h.controlConfig.Runtime)
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
 
 	curKeys = curKeys[:len(curKeys)-1]
-	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, true); err != nil {
+	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, []apiserverconfigv1.Key{}, h.controlConfig.EncryptType, true); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}

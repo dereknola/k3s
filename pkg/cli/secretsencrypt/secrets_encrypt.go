@@ -136,10 +136,12 @@ func Status(app *cli.Context) error {
 	fmt.Fprintf(w, "Active\tKey Type\tName\n")
 	fmt.Fprintf(w, "------\t--------\t----\n")
 	if status.ActiveKey != "" {
-		fmt.Fprintf(w, " *\t%s\t%s\n", "AES-CBC", status.ActiveKey)
+		ak := strings.Split(status.ActiveKey, " ")
+		fmt.Fprintf(w, " *\t%s\t%s\n", ak[0], ak[1])
 	}
 	for _, k := range status.InactiveKeys {
-		fmt.Fprintf(w, "\t%s\t%s\n", "AES-CBC", k)
+		ik := strings.Split(k, " ")
+		fmt.Fprintf(w, "\t%s\t%s\n", ik[0], ik[1])
 	}
 	w.Flush()
 	fmt.Println(statusOutput + tabBuffer.String())
@@ -156,8 +158,9 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(secretsencrypt.EncryptionPrepare),
-		Force: cmds.ServerConfig.EncryptForce,
+		Stage:   pointer.String(secretsencrypt.EncryptionPrepare),
+		KeyType: pointer.String(cmds.ServerConfig.EncryptKeyType),
+		Force:   cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -178,7 +181,7 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(secretsencrypt.EncryptionRotate),
+		Stage: pointer.String(secretsencrypt.EncryptionRotate),
 		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
@@ -201,7 +204,7 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.StringPtr(secretsencrypt.EncryptionReencryptActive),
+		Stage: pointer.String(secretsencrypt.EncryptionReencryptActive),
 		Force: cmds.ServerConfig.EncryptForce,
 		Skip:  cmds.ServerConfig.EncryptSkip,
 	})

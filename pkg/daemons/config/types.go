@@ -194,6 +194,7 @@ type Control struct {
 	ClusterResetRestorePath  string
 	EncryptForce             bool
 	EncryptSkip              bool
+	EncryptType              string
 	TLSMinVersion            uint16
 	TLSCipherSuites          []uint16
 	EtcdSnapshotName         string        `json:"-"`

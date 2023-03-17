@@ -23,6 +23,8 @@ const (
 	EncryptionReencryptRequest  string = "reencrypt_request"
 	EncryptionReencryptActive   string = "reencrypt_active"
 	EncryptionReencryptFinished string = "reencrypt_finished"
+	AESCBCKeyType               string = "aescbc"
+	SecretBoxKeyType            string = "secretbox"
 )
 
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
@@ -40,39 +42,66 @@ func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1
 	return curEncryption.Resources[0].Providers, nil
 }
 
-func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key, error) {
+func GetEncryptionKeys(runtime *config.ControlRuntime) ([]apiserverconfigv1.Key, []apiserverconfigv1.Key, error) {
 
 	providers, err := GetEncryptionProviders(runtime)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if len(providers) > 2 {
-		return nil, fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	if len(providers) > 3 {
+		return nil, nil, fmt.Errorf("more than 3 providers (%d) found in secrets encryption", len(providers))
 	}
 
-	var curKeys []apiserverconfigv1.Key
+	var aescbcKeys []apiserverconfigv1.Key
+	var sbKeys []apiserverconfigv1.Key
 	for _, p := range providers {
 		if p.AESCBC != nil {
-			curKeys = append(curKeys, p.AESCBC.Keys...)
+			aescbcKeys = append(aescbcKeys, p.AESCBC.Keys...)
 		}
-		if p.AESGCM != nil || p.KMS != nil || p.Secretbox != nil {
-			return nil, fmt.Errorf("non-standard encryption keys found")
+		if p.Secretbox != nil {
+			sbKeys = append(sbKeys, p.Secretbox.Keys...)
+		}
+		if p.AESGCM != nil || p.KMS != nil {
+			return nil, nil, fmt.Errorf("unsupported encryption keys found")
 		}
 	}
-	return curKeys, nil
+	return aescbcKeys, sbKeys, nil
 }
 
-func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfigv1.Key, enable bool) error {
+func WriteEncryptionConfig(runtime *config.ControlRuntime, AESCBCKeys []apiserverconfigv1.Key, SBKeys []apiserverconfigv1.Key, keyType string, enable bool) error {
 
 	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
+	var primaryProvider apiserverconfigv1.ProviderConfiguration
+	var secondaryProvider apiserverconfigv1.ProviderConfiguration
+	switch keyType {
+	case AESCBCKeyType:
+		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+			AESCBC: &apiserverconfigv1.AESConfiguration{
+				Keys: AESCBCKeys,
+			},
+		}
+		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
+			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+				Keys: SBKeys,
+			},
+		}
+	case SecretBoxKeyType:
+		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+				Keys: SBKeys,
+			},
+		}
+		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
+			AESCBC: &apiserverconfigv1.AESConfiguration{
+				Keys: AESCBCKeys,
+			},
+		}
+	}
 	if enable {
 		providers = []apiserverconfigv1.ProviderConfiguration{
-			{
-				AESCBC: &apiserverconfigv1.AESConfiguration{
-					Keys: keys,
-				},
-			},
+			primaryProvider,
+			secondaryProvider,
 			{
 				Identity: &apiserverconfigv1.IdentityConfiguration{},
 			},
@@ -82,11 +111,8 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfi
 			{
 				Identity: &apiserverconfigv1.IdentityConfiguration{},
 			},
-			{
-				AESCBC: &apiserverconfigv1.AESConfiguration{
-					Keys: keys,
-				},
-			},
+			primaryProvider,
+			secondaryProvider,
 		}
 	}
 
@@ -122,7 +148,7 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 // a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
 
-	keys, err := GetEncryptionKeys(runtime)
+	aescbcKeys, sbKeys, err := GetEncryptionKeys(runtime)
 	if err != nil {
 		return "", err
 	}
@@ -130,7 +156,8 @@ func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, e
 		Name:   keyName,
 		Secret: "12345",
 	}
-	keys = append(keys, newKey)
+	keys := append(aescbcKeys, newKey)
+	keys = append(sbKeys, newKey)
 	b, err := json.Marshal(keys)
 	if err != nil {
 		return "", err

@@ -24,7 +24,10 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-const aescbcKeySize = 32
+const (
+	aescbcKeySize    = 32
+	secretBoxKeySize = 32
+)
 
 type EncryptionState struct {
 	Stage        string   `json:"stage"`
@@ -36,10 +39,11 @@ type EncryptionState struct {
 }
 
 type EncryptionRequest struct {
-	Stage  *string `json:"stage,omitempty"`
-	Enable *bool   `json:"enable,omitempty"`
-	Force  bool    `json:"force"`
-	Skip   bool    `json:"skip"`
+	Stage   *string `json:"stage,omitempty"`
+	KeyType *string `json:"keytype,omitempty"`
+	Enable  *bool   `json:"enable,omitempty"`
+	Force   bool    `json:"force"`
+	Skip    bool    `json:"skip"`
 }
 
 func getEncryptionRequest(req *http.Request) (EncryptionRequest, error) {
@@ -80,9 +84,9 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	} else if err != nil {
 		return state, err
 	}
-	if providers[1].Identity != nil && providers[0].AESCBC != nil {
+	if providers[len(providers)-1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) {
 		state.Enable = pointer.Bool(true)
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil || !server.EncryptSecrets {
+	} else if !server.EncryptSecrets || providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil) {
 		state.Enable = pointer.Bool(false)
 	}
 
@@ -101,11 +105,23 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	for _, p := range providers {
 		if p.AESCBC != nil {
 			for _, aesKey := range p.AESCBC.Keys {
+				typName := "AES-CBC " + aesKey.Name
 				if active {
 					active = false
-					state.ActiveKey = aesKey.Name
+					state.ActiveKey = typName
 				} else {
-					state.InactiveKeys = append(state.InactiveKeys, aesKey.Name)
+					state.InactiveKeys = append(state.InactiveKeys, typName)
+				}
+			}
+		}
+		if p.Secretbox != nil {
+			for _, sbKey := range p.Secretbox.Keys {
+				typName := "XSalsa20-POLY1305 " + sbKey.Name
+				if active {
+					active = false
+					state.ActiveKey = typName
+				} else {
+					state.InactiveKeys = append(state.InactiveKeys, typName)
 				}
 			}
 		}
@@ -117,29 +133,30 @@ func encryptionStatus(server *config.Control) (EncryptionState, error) {
 	return state, nil
 }
 
-func encryptionEnable(ctx context.Context, server *config.Control, enable bool) error {
+func encryptionEnable(ctx context.Context, server *config.Control, keyType string, enable bool) error {
 	providers, err := secretsencrypt.GetEncryptionProviders(server.Runtime)
 	if err != nil {
 		return err
 	}
-	if len(providers) > 2 {
-		return fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	if len(providers) > 3 {
+		return fmt.Errorf("more than 3 providers (%d) found in secrets encryption", len(providers))
 	}
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, _, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
 	}
-	if providers[1].Identity != nil && providers[0].AESCBC != nil && !enable {
+
+	if providers[1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) && !enable {
 		logrus.Infoln("Disabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, []apiserverconfigv1.Key{}, keyType, enable); err != nil {
 			return err
 		}
 	} else if !enable {
 		logrus.Infoln("Secrets encryption already disabled")
 		return nil
-	} else if providers[0].Identity != nil && providers[1].AESCBC != nil && enable {
+	} else if providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil) && enable {
 		logrus.Infoln("Enabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, []apiserverconfigv1.Key{}, keyType, enable); err != nil {
 			return err
 		}
 	} else if enable {
@@ -170,16 +187,16 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 		if encryptReq.Stage != nil {
 			switch *encryptReq.Stage {
 			case secretsencrypt.EncryptionPrepare:
-				err = encryptionPrepare(ctx, server, encryptReq.Force)
+				err = encryptionPrepare(ctx, server, *encryptReq.KeyType, encryptReq.Force)
 			case secretsencrypt.EncryptionRotate:
 				err = encryptionRotate(ctx, server, encryptReq.Force)
 			case secretsencrypt.EncryptionReencryptActive:
-				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip)
+				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip, *encryptReq.KeyType)
 			default:
 				err = fmt.Errorf("unknown stage %s requested", *encryptReq.Stage)
 			}
 		} else if encryptReq.Enable != nil {
-			err = encryptionEnable(ctx, server, *encryptReq.Enable)
+			err = encryptionEnable(ctx, server, *encryptReq.KeyType, *encryptReq.Enable)
 		}
 
 		if err != nil {
@@ -194,23 +211,28 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 	})
 }
 
-func encryptionPrepare(ctx context.Context, server *config.Control, force bool) error {
+func encryptionPrepare(ctx context.Context, server *config.Control, keyType string, force bool) error {
 	states := secretsencrypt.EncryptionStart + "-" + secretsencrypt.EncryptionReencryptFinished
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil && !force {
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curAESCBCKeys, curSBKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
 	}
-
-	if err := AppendNewEncryptionKey(&curKeys); err != nil {
+	newKey, err := GenNewEncryptionKey(keyType)
+	if err != nil {
 		return err
 	}
-	logrus.Infoln("Adding secrets-encryption key: ", curKeys[len(curKeys)-1])
+	if keyType == secretsencrypt.AESCBCKeyType {
+		curAESCBCKeys = append(curAESCBCKeys, newKey)
+	} else if keyType == secretsencrypt.SecretBoxKeyType {
+		curSBKeys = append(curSBKeys, newKey)
+	}
+	logrus.Infoln("Adding secrets-encryption key: ", newKey)
 
-	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, true); err != nil {
+	if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curAESCBCKeys, curSBKeys, keyType, true); err != nil {
 		return err
 	}
 	nodeName := os.Getenv("NODE_NAME")
@@ -230,7 +252,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 		return err
 	}
 
-	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	curKeys, _, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
 	}
@@ -238,7 +260,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	// Right rotate elements
 	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
 
-	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, true); err != nil {
+	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, []apiserverconfigv1.Key{}, secretsencrypt.AESCBCKeyType, true); err != nil {
 		return err
 	}
 	logrus.Infoln("Encryption keys right rotated")
@@ -253,7 +275,7 @@ func encryptionRotate(ctx context.Context, server *config.Control, force bool) e
 	return cluster.Save(ctx, server, true)
 }
 
-func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool) error {
+func encryptionReencrypt(ctx context.Context, server *config.Control, force bool, skip bool, keyType string) error {
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
@@ -279,23 +301,28 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	return nil
 }
 
-func AppendNewEncryptionKey(keys *[]apiserverconfigv1.Key) error {
-
-	aescbcKey := make([]byte, aescbcKeySize)
-	_, err := rand.Read(aescbcKey)
+func GenNewEncryptionKey(keyType string) (apiserverconfigv1.Key, error) {
+	var keyByte []byte
+	var keyPrefix string
+	switch {
+	case keyType == "secretbox":
+		keyByte = make([]byte, secretBoxKeySize)
+		keyPrefix = "secretboxkey-"
+	case keyType == "aescbc":
+		keyByte = make([]byte, aescbcKeySize)
+		keyPrefix = "aescbckey-"
+	}
+	_, err := rand.Read(keyByte)
 	if err != nil {
-		return err
+		return apiserverconfigv1.Key{}, err
 	}
-	encodedKey := base64.StdEncoding.EncodeToString(aescbcKey)
+	encodedKey := base64.StdEncoding.EncodeToString(keyByte)
 
-	newKey := []apiserverconfigv1.Key{
-		{
-			Name:   "aescbckey-" + time.Now().Format(time.RFC3339),
-			Secret: encodedKey,
-		},
+	newKey := apiserverconfigv1.Key{
+		Name:   keyPrefix + time.Now().Format(time.RFC3339),
+		Secret: encodedKey,
 	}
-	*keys = append(*keys, newKey...)
-	return nil
+	return newKey, nil
 }
 
 func getEncryptionHashAnnotation(core core.Interface) (string, string, error) {
