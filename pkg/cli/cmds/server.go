@@ -84,6 +84,7 @@ type Server struct {
 	EncryptForce             bool
 	EncryptOutput            string
 	EncryptSkip              bool
+	EncryptKeyType           string
 	SystemDefaultRegistry    string
 	StartupHooks             []StartupHook
 	SupervisorMetrics        bool

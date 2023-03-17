@@ -33,6 +33,8 @@ const (
 	EncryptionReencryptRequest  string  = "reencrypt_request"
 	EncryptionReencryptActive   string  = "reencrypt_active"
 	EncryptionReencryptFinished string  = "reencrypt_finished"
+	AESCBCKeyType               string  = "aescbc"
+	SecretBoxKeyType            string  = "secretbox"
 	SecretListPageSize          int64   = 20
 	SecretQPS                   float32 = 200
 	SecretBurst                 int     = 200
@@ -40,6 +42,14 @@ const (
 	SecretsProgressEvent        string  = "SecretsProgress"
 	SecretsUpdateCompleteEvent  string  = "SecretsUpdateComplete"
 )
+
+// We support 3 key/provider types: AESCBC, SecretBox, and Identity. The Identity provider is
+// represented just as a boolean, which is used to determine if encryption is enabled/disabled.
+type EncryptionKeys struct {
+	AESCBCKeys []apiserverconfigv1.Key
+	SBKeys     []apiserverconfigv1.Key
+	Identity   bool
+}
 
 var EncryptionHashAnnotation = version.Program + ".io/encryption-config-hash"
 
@@ -57,49 +67,72 @@ func GetEncryptionProviders(runtime *config.ControlRuntime) ([]apiserverconfigv1
 }
 
 // GetEncryptionKeys returns a list of encryption keys from the current encryption configuration.
-// If includeIdentity is true, it will also include a fake key representing the identity provider, which
-// is used to determine if encryption is enabled/disabled.
-func GetEncryptionKeys(runtime *config.ControlRuntime, includeIdentity bool) ([]apiserverconfigv1.Key, error) {
+func GetEncryptionKeys(runtime *config.ControlRuntime) (*EncryptionKeys, error) {
 
+	currentKeys := &EncryptionKeys{}
 	providers, err := GetEncryptionProviders(runtime)
 	if err != nil {
 		return nil, err
 	}
-	if len(providers) > 2 {
-		return nil, fmt.Errorf("more than 2 providers (%d) found in secrets encryption", len(providers))
+	if len(providers) > 3 {
+		return nil, fmt.Errorf("more than 3 providers (%d) found in secrets encryption", len(providers))
 	}
 
-	var curKeys []apiserverconfigv1.Key
 	for _, p := range providers {
 		// Since identity doesn't have keys, we make up a fake key to represent it, so we can
 		// know that encryption is enabled/disabled in the request.
-		if p.Identity != nil && includeIdentity {
-			curKeys = append(curKeys, apiserverconfigv1.Key{
-				Name:   "identity",
-				Secret: "identity",
-			})
+		if p.Identity != nil {
+			currentKeys.Identity = true
 		}
 		if p.AESCBC != nil {
-			curKeys = append(curKeys, p.AESCBC.Keys...)
+			currentKeys.AESCBCKeys = append(currentKeys.AESCBCKeys, p.AESCBC.Keys...)
 		}
-		if p.AESGCM != nil || p.KMS != nil || p.Secretbox != nil {
-			return nil, fmt.Errorf("non-standard encryption keys found")
+		if p.Secretbox != nil {
+			currentKeys.SBKeys = append(currentKeys.SBKeys, p.Secretbox.Keys...)
+		}
+		if p.AESGCM != nil || p.KMS != nil {
+			return nil, fmt.Errorf("unsupported encryption keys found")
 		}
 	}
-	return curKeys, nil
+	return currentKeys, nil
 }
 
-func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfigv1.Key, enable bool) error {
+// WriteEncryptionConfig writes the encryption configuration to the file system.
+// The primeProvider is the provider that will be placed first, and is used to encrypt new secrets.
+func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys, primeProvider string, enable bool) error {
 
 	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
+	var primaryProvider apiserverconfigv1.ProviderConfiguration
+	var secondaryProvider apiserverconfigv1.ProviderConfiguration
+	switch primeProvider {
+	case AESCBCKeyType:
+		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+			AESCBC: &apiserverconfigv1.AESConfiguration{
+				Keys: keys.AESCBCKeys,
+			},
+		}
+		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
+			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+				Keys: keys.SBKeys,
+			},
+		}
+	case SecretBoxKeyType:
+		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+				Keys: keys.SBKeys,
+			},
+		}
+		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
+			AESCBC: &apiserverconfigv1.AESConfiguration{
+				Keys: keys.AESCBCKeys,
+			},
+		}
+	}
 	if enable {
 		providers = []apiserverconfigv1.ProviderConfiguration{
-			{
-				AESCBC: &apiserverconfigv1.AESConfiguration{
-					Keys: keys,
-				},
-			},
+			primaryProvider,
+			secondaryProvider,
 			{
 				Identity: &apiserverconfigv1.IdentityConfiguration{},
 			},
@@ -109,11 +142,8 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys []apiserverconfi
 			{
 				Identity: &apiserverconfigv1.IdentityConfiguration{},
 			},
-			{
-				AESCBC: &apiserverconfigv1.AESConfiguration{
-					Keys: keys,
-				},
-			},
+			primaryProvider,
+			secondaryProvider,
 		}
 	}
 
@@ -149,15 +179,24 @@ func GenEncryptionConfigHash(runtime *config.ControlRuntime) (string, error) {
 // any identity providers plus a new key based on the input arguments.
 func GenReencryptHash(runtime *config.ControlRuntime, keyName string) (string, error) {
 
-	keys, err := GetEncryptionKeys(runtime, true)
+	// To retain compatibility with the older encryption hash format,
+	// we contruct the hash as: aescbc + secretbox + identity + newkey
+	currentKeys, err := GetEncryptionKeys(runtime)
 	if err != nil {
 		return "", err
 	}
-	newKey := apiserverconfigv1.Key{
+	keys := currentKeys.AESCBCKeys
+	keys = append(keys, currentKeys.SBKeys...)
+	if currentKeys.Identity {
+		keys = append(keys, apiserverconfigv1.Key{
+			Name:   "identity",
+			Secret: "identity",
+		})
+	}
+	keys = append(keys, apiserverconfigv1.Key{
 		Name:   keyName,
 		Secret: "12345",
-	}
-	keys = append(keys, newKey)
+	})
 	b, err := json.Marshal(keys)
 	if err != nil {
 		return "", err

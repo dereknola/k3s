@@ -233,6 +233,7 @@ type Control struct {
 	ClusterResetRestorePath  string
 	MinTLSVersion            string
 	CipherSuites             []string
+	EncryptType              string
 	TLSMinVersion            uint16   `json:"-"`
 	TLSCipherSuites          []uint16 `json:"-"`
 	EtcdSnapshotName         string   `json:"-"`
