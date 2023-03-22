@@ -55,8 +55,7 @@ func Enable(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Enable:  ptr.To(true),
-		KeyType: ptr.To(cmds.ServerConfig.EncryptKeyType),
+		Enable: ptr.To(true),
 	})
 	if err != nil {
 		return err
@@ -159,9 +158,8 @@ func Prepare(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage:   ptr.To(secretsencrypt.EncryptionPrepare),
-		KeyType: ptr.To(cmds.ServerConfig.EncryptKeyType),
-		Force:   cmds.ServerConfig.EncryptForce,
+		Stage: ptr.To(secretsencrypt.EncryptionPrepare),
+		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -182,9 +180,8 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage:   ptr.To(secretsencrypt.EncryptionRotate),
-		KeyType: ptr.To(cmds.ServerConfig.EncryptKeyType),
-		Force:   cmds.ServerConfig.EncryptForce,
+		Stage: ptr.To(secretsencrypt.EncryptionRotate),
+		Force: cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -205,10 +202,9 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage:   ptr.To(secretsencrypt.EncryptionReencryptActive),
-		KeyType: ptr.To(cmds.ServerConfig.EncryptKeyType),
-		Force:   cmds.ServerConfig.EncryptForce,
-		Skip:    cmds.ServerConfig.EncryptSkip,
+		Stage: ptr.To(secretsencrypt.EncryptionReencryptActive),
+		Force: cmds.ServerConfig.EncryptForce,
+		Skip:  cmds.ServerConfig.EncryptSkip,
 	})
 	if err != nil {
 		return err
@@ -234,10 +230,10 @@ func RotateKeys(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	timeout := 70 * time.Second
+	timeout := 90 * time.Second
 	if err = info.Put("/v1-"+version.Program+"/encrypt/config", b, clientaccess.WithTimeout(timeout)); err != nil {
 		return wrapServerError(err)
 	}
-	fmt.Println("keys rotated, reencryption started")
+	fmt.Println("keys rotated, reencryption finished")
 	return nil
 }

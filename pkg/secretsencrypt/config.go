@@ -35,6 +35,7 @@ const (
 	EncryptionReencryptFinished string  = "reencrypt_finished"
 	AESCBCKeyType               string  = "aescbc"
 	SecretBoxKeyType            string  = "secretbox"
+	KeySize                     int     = 32
 	SecretListPageSize          int64   = 20
 	SecretQPS                   float32 = 200
 	SecretBurst                 int     = 200
@@ -98,52 +99,59 @@ func GetEncryptionKeys(runtime *config.ControlRuntime) (*EncryptionKeys, error) 
 }
 
 // WriteEncryptionConfig writes the encryption configuration to the file system.
-// The primeProvider is the provider that will be placed first, and is used to encrypt new secrets.
-func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys, primeProvider string, enable bool) error {
+// The keyType is the provider that will be placed first, and is used to encrypt new secrets.
+func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys, keyType string, enable bool) error {
 
-	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
-	var primaryProvider apiserverconfigv1.ProviderConfiguration
-	var secondaryProvider apiserverconfigv1.ProviderConfiguration
-	switch primeProvider {
+	var primary apiserverconfigv1.ProviderConfiguration
+	var secondary *apiserverconfigv1.ProviderConfiguration
+	switch keyType {
 	case AESCBCKeyType:
-		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+		primary = apiserverconfigv1.ProviderConfiguration{
 			AESCBC: &apiserverconfigv1.AESConfiguration{
 				Keys: keys.AESCBCKeys,
 			},
 		}
-		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
-			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
-				Keys: keys.SBKeys,
-			},
+		if len(keys.SBKeys) > 0 {
+			secondary = &apiserverconfigv1.ProviderConfiguration{
+				Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+					Keys: keys.SBKeys,
+				},
+			}
 		}
 	case SecretBoxKeyType:
-		primaryProvider = apiserverconfigv1.ProviderConfiguration{
+		primary = apiserverconfigv1.ProviderConfiguration{
 			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
 				Keys: keys.SBKeys,
 			},
 		}
-		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
-			AESCBC: &apiserverconfigv1.AESConfiguration{
-				Keys: keys.AESCBCKeys,
-			},
+		if len(keys.AESCBCKeys) > 0 {
+			secondary = &apiserverconfigv1.ProviderConfiguration{
+				AESCBC: &apiserverconfigv1.AESConfiguration{
+					Keys: keys.AESCBCKeys,
+				},
+			}
 		}
 	}
-	if enable {
+	identity := apiserverconfigv1.ProviderConfiguration{
+		Identity: &apiserverconfigv1.IdentityConfiguration{},
+	}
+	// Placing the identity provider first disables encryption
+	if enable && secondary != nil {
 		providers = []apiserverconfigv1.ProviderConfiguration{
-			primaryProvider,
-			secondaryProvider,
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
+			primary,
+			*secondary,
+			identity,
+		}
+	} else if enable {
+		providers = []apiserverconfigv1.ProviderConfiguration{
+			primary,
+			identity,
 		}
 	} else {
 		providers = []apiserverconfigv1.ProviderConfiguration{
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
-			primaryProvider,
-			secondaryProvider,
+			identity,
+			primary,
 		}
 	}
 

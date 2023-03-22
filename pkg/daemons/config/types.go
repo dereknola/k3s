@@ -176,6 +176,7 @@ type CriticalControlArgs struct {
 	DisableNPC            bool         `cli:"disable-network-policy"`
 	DisableServiceLB      bool         `cli:"disable-service-lb"`
 	EncryptSecrets        bool         `cli:"secrets-encryption"`
+	EncryptKeyType        string       `cli:"secrets-encryption-key-type"`
 	EmbeddedRegistry      bool         `cli:"embedded-registry"`
 	FlannelBackend        string       `cli:"flannel-backend"`
 	FlannelIPv6Masq       bool         `cli:"flannel-ipv6-masq"`
@@ -233,7 +234,6 @@ type Control struct {
 	ClusterResetRestorePath  string
 	MinTLSVersion            string
 	CipherSuites             []string
-	EncryptType              string
 	TLSMinVersion            uint16   `json:"-"`
 	TLSCipherSuites          []uint16 `json:"-"`
 	EtcdSnapshotName         string   `json:"-"`

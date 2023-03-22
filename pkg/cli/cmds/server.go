@@ -578,6 +578,12 @@ var ServerFlags = []cli.Flag{
 		Usage:       "Enable secret encryption at rest",
 		Destination: &ServerConfig.EncryptSecrets,
 	},
+	&cli.StringFlag{
+		Name:        "secrets-encryption-key-type",
+		Usage:       "Secret encryption key type (valid values: 'aescbc', 'secretbox')",
+		Destination: &ServerConfig.EncryptKeyType,
+		Value:       "aescbc",
+	},
 	// Experimental flags
 	EnablePProfFlag,
 	&cli.BoolFlag{
