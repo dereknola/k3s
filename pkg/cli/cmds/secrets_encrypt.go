@@ -17,6 +17,7 @@ var (
 		Name:        "k,key-type",
 		Usage:       "Encryption key type. Options: aescbc, secretbox (Default: aescbc)",
 		Destination: &ServerConfig.EncryptKeyType,
+		Value:       "aescbc",
 	}
 	EncryptFlags = []cli.Flag{
 		DataDirFlag,
@@ -67,14 +68,14 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				Usage:          "Prepare for encryption keys rotation",
 				SkipArgReorder: true,
 				Action:         prepare,
-				Flags:          append(EncryptFlags, forceFlag, keyTypeFlag),
+				Flags:          append(EncryptFlags, keyTypeFlag, forceFlag),
 			},
 			{
 				Name:           "rotate",
 				Usage:          "Rotate secrets encryption keys",
 				SkipArgReorder: true,
 				Action:         rotate,
-				Flags:          append(EncryptFlags, forceFlag),
+				Flags:          append(EncryptFlags, keyTypeFlag, forceFlag),
 			},
 			{
 				Name:           "reencrypt",
@@ -82,6 +83,7 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				SkipArgReorder: true,
 				Action:         reencrypt,
 				Flags: append(EncryptFlags,
+					keyTypeFlag,
 					forceFlag,
 					&cli.BoolFlag{
 						Name:        "skip",

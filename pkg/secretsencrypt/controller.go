@@ -128,18 +128,24 @@ func (h *handler) onChangeNode(nodeName string, node *corev1.Node) (*corev1.Node
 	}
 
 	// Remove last key
-	curKeys, _, err := GetEncryptionKeys(h.controlConfig.Runtime)
+	aescbcKeys, sbKeys, err := GetEncryptionKeys(h.controlConfig.Runtime)
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-
-	curKeys = curKeys[:len(curKeys)-1]
-	if err = WriteEncryptionConfig(h.controlConfig.Runtime, curKeys, []apiserverconfigv1.Key{}, h.controlConfig.EncryptType, true); err != nil {
+	var removedKey apiserverconfigv1.Key
+	if h.controlConfig.EncryptType == AESCBCKeyType {
+		removedKey = aescbcKeys[len(aescbcKeys)-1]
+		aescbcKeys = aescbcKeys[:len(aescbcKeys)-1]
+	} else if h.controlConfig.EncryptType == SecretBoxKeyType {
+		removedKey = sbKeys[len(sbKeys)-1]
+		sbKeys = sbKeys[:len(sbKeys)-1]
+	}
+	if err = WriteEncryptionConfig(h.controlConfig.Runtime, aescbcKeys, sbKeys, h.controlConfig.EncryptType, true); err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	logrus.Infoln("Removed key: ", curKeys[len(curKeys)-1])
+	logrus.Infoln("Removed key: ", removedKey)
 	if err != nil {
 		h.recorder.Event(nodeRef, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err

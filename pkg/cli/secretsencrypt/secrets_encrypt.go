@@ -181,8 +181,9 @@ func Rotate(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionRotate),
-		Force: cmds.ServerConfig.EncryptForce,
+		Stage:   pointer.String(secretsencrypt.EncryptionRotate),
+		KeyType: pointer.String(cmds.ServerConfig.EncryptKeyType),
+		Force:   cmds.ServerConfig.EncryptForce,
 	})
 	if err != nil {
 		return err
@@ -204,9 +205,10 @@ func Reencrypt(app *cli.Context) error {
 		return err
 	}
 	b, err := json.Marshal(server.EncryptionRequest{
-		Stage: pointer.String(secretsencrypt.EncryptionReencryptActive),
-		Force: cmds.ServerConfig.EncryptForce,
-		Skip:  cmds.ServerConfig.EncryptSkip,
+		Stage:   pointer.String(secretsencrypt.EncryptionReencryptActive),
+		KeyType: pointer.String(cmds.ServerConfig.EncryptKeyType),
+		Force:   cmds.ServerConfig.EncryptForce,
+		Skip:    cmds.ServerConfig.EncryptSkip,
 	})
 	if err != nil {
 		return err

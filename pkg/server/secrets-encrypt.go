@@ -189,7 +189,7 @@ func encryptionConfigHandler(ctx context.Context, server *config.Control) http.H
 			case secretsencrypt.EncryptionPrepare:
 				err = encryptionPrepare(ctx, server, *encryptReq.KeyType, encryptReq.Force)
 			case secretsencrypt.EncryptionRotate:
-				err = encryptionRotate(ctx, server, encryptReq.Force)
+				err = encryptionRotate(ctx, server, *encryptReq.KeyType, encryptReq.Force)
 			case secretsencrypt.EncryptionReencryptActive:
 				err = encryptionReencrypt(ctx, server, encryptReq.Force, encryptReq.Skip, *encryptReq.KeyType)
 			default:
@@ -246,24 +246,28 @@ func encryptionPrepare(ctx context.Context, server *config.Control, keyType stri
 	return cluster.Save(ctx, server, true)
 }
 
-func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
+func encryptionRotate(ctx context.Context, server *config.Control, keyType string, force bool) error {
 
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
 		return err
 	}
 
-	curKeys, _, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	aescbcKeys, sbKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
 	}
 
 	// Right rotate elements
-	rotatedKeys := append(curKeys[len(curKeys)-1:], curKeys[:len(curKeys)-1]...)
+	if keyType == secretsencrypt.AESCBCKeyType {
+		aescbcKeys = append(aescbcKeys[len(aescbcKeys)-1:], aescbcKeys[:len(aescbcKeys)-1]...)
+	} else if keyType == secretsencrypt.SecretBoxKeyType {
+		sbKeys = append(sbKeys[len(sbKeys)-1:], sbKeys[:len(sbKeys)-1]...)
+	}
 
-	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, rotatedKeys, []apiserverconfigv1.Key{}, secretsencrypt.AESCBCKeyType, true); err != nil {
+	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, aescbcKeys, sbKeys, keyType, true); err != nil {
 		return err
 	}
-	logrus.Infoln("Encryption keys right rotated")
+	logrus.Infof("%s encryption keys right rotated\n", keyType)
 	nodeName := os.Getenv("NODE_NAME")
 	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
@@ -282,6 +286,7 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	}
 	server.EncryptForce = force
 	server.EncryptSkip = skip
+	server.EncryptType = keyType
 	nodeName := os.Getenv("NODE_NAME")
 	node, err := server.Runtime.Core.Core().V1().Node().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
@@ -303,14 +308,11 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 
 func GenNewEncryptionKey(keyType string) (apiserverconfigv1.Key, error) {
 	var keyByte []byte
-	var keyPrefix string
 	switch {
-	case keyType == "secretbox":
+	case keyType == secretsencrypt.SecretBoxKeyType:
 		keyByte = make([]byte, secretBoxKeySize)
-		keyPrefix = "secretboxkey-"
-	case keyType == "aescbc":
+	case keyType == secretsencrypt.AESCBCKeyType:
 		keyByte = make([]byte, aescbcKeySize)
-		keyPrefix = "aescbckey-"
 	}
 	_, err := rand.Read(keyByte)
 	if err != nil {
@@ -319,7 +321,7 @@ func GenNewEncryptionKey(keyType string) (apiserverconfigv1.Key, error) {
 	encodedKey := base64.StdEncoding.EncodeToString(keyByte)
 
 	newKey := apiserverconfigv1.Key{
-		Name:   keyPrefix + time.Now().Format(time.RFC3339),
+		Name:   keyType + "key-" + time.Now().Format(time.RFC3339),
 		Secret: encodedKey,
 	}
 	return newKey, nil
