@@ -25,6 +25,12 @@ func commandPrep(app *cli.Context, cfg *cmds.Server) (*clientaccess.Info, error)
 	// database credentials or other secrets.
 	gspt.SetProcTitle(os.Args[0] + " secrets-encrypt")
 
+	if app.IsSet("key-type") {
+		if cfg.EncryptKeyType != secretsencrypt.AESCBCKeyType && cfg.EncryptKeyType != secretsencrypt.SecretBoxKeyType {
+			return nil, fmt.Errorf("invalid key type %s", cfg.EncryptKeyType)
+		}
+	}
+
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
 		return nil, err
@@ -54,7 +60,10 @@ func Enable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(true)})
+	b, err := json.Marshal(server.EncryptionRequest{
+		Enable:  pointer.Bool(true),
+		KeyType: pointer.String(cmds.ServerConfig.EncryptKeyType),
+	})
 	if err != nil {
 		return err
 	}
@@ -74,7 +83,10 @@ func Disable(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(server.EncryptionRequest{Enable: pointer.Bool(false)})
+	b, err := json.Marshal(server.EncryptionRequest{
+		Enable:  pointer.Bool(false),
+		KeyType: pointer.String(secretsencrypt.AESCBCKeyType), // Needs the default type to be set
+	})
 	if err != nil {
 		return err
 	}

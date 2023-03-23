@@ -73,7 +73,7 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, AESCBCKeys []apiserve
 	// Placing the identity provider first disables encryption
 	var providers []apiserverconfigv1.ProviderConfiguration
 	var primaryProvider apiserverconfigv1.ProviderConfiguration
-	var secondaryProvider apiserverconfigv1.ProviderConfiguration
+	var secondaryProvider *apiserverconfigv1.ProviderConfiguration // May or may not be used
 	switch keyType {
 	case AESCBCKeyType:
 		primaryProvider = apiserverconfigv1.ProviderConfiguration{
@@ -81,10 +81,12 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, AESCBCKeys []apiserve
 				Keys: AESCBCKeys,
 			},
 		}
-		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
-			Secretbox: &apiserverconfigv1.SecretboxConfiguration{
-				Keys: SBKeys,
-			},
+		if len(SBKeys) != 0 {
+			secondaryProvider = &apiserverconfigv1.ProviderConfiguration{
+				Secretbox: &apiserverconfigv1.SecretboxConfiguration{
+					Keys: SBKeys,
+				},
+			}
 		}
 	case SecretBoxKeyType:
 		primaryProvider = apiserverconfigv1.ProviderConfiguration{
@@ -92,27 +94,47 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, AESCBCKeys []apiserve
 				Keys: SBKeys,
 			},
 		}
-		secondaryProvider = apiserverconfigv1.ProviderConfiguration{
-			AESCBC: &apiserverconfigv1.AESConfiguration{
-				Keys: AESCBCKeys,
-			},
+		if len(AESCBCKeys) != 0 {
+			secondaryProvider = &apiserverconfigv1.ProviderConfiguration{
+				AESCBC: &apiserverconfigv1.AESConfiguration{
+					Keys: AESCBCKeys,
+				},
+			}
 		}
 	}
 	if enable {
-		providers = []apiserverconfigv1.ProviderConfiguration{
-			primaryProvider,
-			secondaryProvider,
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
+		if secondaryProvider != nil {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				primaryProvider,
+				*secondaryProvider,
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+			}
+		} else {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				primaryProvider,
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+			}
 		}
 	} else {
-		providers = []apiserverconfigv1.ProviderConfiguration{
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
-			primaryProvider,
-			secondaryProvider,
+		if secondaryProvider != nil {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+				primaryProvider,
+				*secondaryProvider,
+			}
+		} else {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+				primaryProvider,
+			}
 		}
 	}
 

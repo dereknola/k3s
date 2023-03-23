@@ -54,7 +54,7 @@ func NewSecretsEncryptCommands(status, enable, disable, prepare, rotate, reencry
 				Usage:          "Enable secrets encryption",
 				SkipArgReorder: true,
 				Action:         enable,
-				Flags:          EncryptFlags,
+				Flags:          append(EncryptFlags, keyTypeFlag),
 			},
 			{
 				Name:           "disable",

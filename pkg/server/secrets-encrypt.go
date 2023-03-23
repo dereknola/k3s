@@ -141,22 +141,27 @@ func encryptionEnable(ctx context.Context, server *config.Control, keyType strin
 	if len(providers) > 3 {
 		return fmt.Errorf("more than 3 providers (%d) found in secrets encryption", len(providers))
 	}
-	curKeys, _, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
+	aescbcKeys, sbKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
 	}
 
-	if providers[1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) && !enable {
+	if providers[len(providers)-1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) && !enable {
 		logrus.Infoln("Disabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, []apiserverconfigv1.Key{}, keyType, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, aescbcKeys, sbKeys, keyType, enable); err != nil {
 			return err
 		}
 	} else if !enable {
 		logrus.Infoln("Secrets encryption already disabled")
 		return nil
 	} else if providers[0].Identity != nil && (providers[1].AESCBC != nil || providers[1].Secretbox != nil) && enable {
+		if keyType == secretsencrypt.AESCBCKeyType && len(aescbcKeys) == 0 {
+			return fmt.Errorf("unable to enable secrets encryption, no AES-CBC keys found")
+		} else if keyType == secretsencrypt.SecretBoxKeyType && len(sbKeys) == 0 {
+			return fmt.Errorf("unable to enable secrets encryption, no XSalsa20-POLY1305 keys found")
+		}
 		logrus.Infoln("Enabling secrets encryption")
-		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, []apiserverconfigv1.Key{}, keyType, enable); err != nil {
+		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, aescbcKeys, sbKeys, keyType, enable); err != nil {
 			return err
 		}
 	} else if enable {
