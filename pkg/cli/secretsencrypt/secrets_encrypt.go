@@ -26,6 +26,12 @@ func commandPrep(cfg *cmds.Server) (*clientaccess.Info, error) {
 	// database credentials or other secrets.
 	proctitle.SetProcTitle(os.Args[0] + " secrets-encrypt")
 
+	if app.IsSet("key-type") {
+		if cfg.EncryptKeyType != secretsencrypt.AESCBCKeyType && cfg.EncryptKeyType != secretsencrypt.SecretBoxKeyType {
+			return nil, fmt.Errorf("invalid key type %s", cfg.EncryptKeyType)
+		}
+	}
+
 	dataDir, err := server.ResolveDataDir(cfg.DataDir)
 	if err != nil {
 		return nil, err

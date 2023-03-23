@@ -151,7 +151,7 @@ func encryptionEnable(ctx context.Context, server *config.Control, keyType strin
 		return err
 	}
 
-	if providers[1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) && !enable {
+	if providers[len(providers)-1].Identity != nil && (providers[0].AESCBC != nil || providers[0].Secretbox != nil) && !enable {
 		logrus.Infoln("Disabling secrets encryption")
 		if err := secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, keyType, enable); err != nil {
 			return err

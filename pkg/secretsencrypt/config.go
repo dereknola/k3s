@@ -130,20 +130,38 @@ func WriteEncryptionConfig(runtime *config.ControlRuntime, keys *EncryptionKeys,
 		}
 	}
 	if enable {
-		providers = []apiserverconfigv1.ProviderConfiguration{
-			primaryProvider,
-			secondaryProvider,
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
+		if secondaryProvider != nil {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				primaryProvider,
+				*secondaryProvider,
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+			}
+		} else {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				primaryProvider,
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+			}
 		}
 	} else {
-		providers = []apiserverconfigv1.ProviderConfiguration{
-			{
-				Identity: &apiserverconfigv1.IdentityConfiguration{},
-			},
-			primaryProvider,
-			secondaryProvider,
+		if secondaryProvider != nil {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+				primaryProvider,
+				*secondaryProvider,
+			}
+		} else {
+			providers = []apiserverconfigv1.ProviderConfiguration{
+				{
+					Identity: &apiserverconfigv1.IdentityConfiguration{},
+				},
+				primaryProvider,
+			}
 		}
 	}
 
