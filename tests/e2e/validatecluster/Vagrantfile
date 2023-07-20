@@ -1,8 +1,8 @@
 ENV['VAGRANT_NO_PARALLEL'] = 'no'
 NODE_ROLES = (ENV['E2E_NODE_ROLES'] ||
-  ["server-0", "server-1", "server-2", "agent-0", "agent-1"])
+  ["server-0", "server-1", "server-2", "lb-0", "lb-1", "agent-0"])
 NODE_BOXES = (ENV['E2E_NODE_BOXES'] ||
-  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
+  ['generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004', 'generic/ubuntu2004'])
 GITHUB_BRANCH = (ENV['E2E_GITHUB_BRANCH'] || "master")
 RELEASE_VERSION = (ENV['E2E_RELEASE_VERSION'] || "")
 EXTERNAL_DB = (ENV['E2E_EXTERNAL_DB'] || "etcd")
@@ -35,7 +35,8 @@ def provision(vm, role, role_num, node_num)
   
   db_type = getDBType(role, role_num, vm)
   hardened_arg = getHardenedArg(vm, HARDENED, scripts_location)
- 
+  lb_vip = "#{NETWORK_PREFIX}.50"
+
   if !REGISTRY.empty?
     vm.provision "Set private registry", type: "shell", path: scripts_location + "/registry.sh", args: [ "#{NETWORK_PREFIX}.1" ]
   end
@@ -51,6 +52,7 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{NETWORK_PREFIX}.100
         flannel-iface: eth1
+        tls-san: #{lb_vip}
         #{db_type}
         #{hardened_arg}
       YAML
@@ -66,6 +68,7 @@ def provision(vm, role, role_num, node_num)
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1
+        tls-san: #{lb_vip}
         #{db_type}
         #{hardened_arg}
       YAML
@@ -78,7 +81,7 @@ def provision(vm, role, role_num, node_num)
     vm.provision 'k3s-agent', type: 'k3s', run: 'once' do |k3s|
       k3s.args = "agent"
       k3s.config = <<~YAML
-        server: "https://#{NETWORK_PREFIX}.100:6443"
+        server: "https://#{lb_vip}:6443"
         token: vagrant
         node-external-ip: #{node_ip}
         flannel-iface: eth1
@@ -88,6 +91,17 @@ def provision(vm, role, role_num, node_num)
       k3s.config_mode = '0644' # side-step https://github.com/k3s-io/k3s/issues/4321
     end
   end
+  if role.include?("lb") 
+    vm.provision "shell", inline: "apt-get update && apt-get install -y haproxy keepalived"
+    vm.provision "Conf haproxy", type: "shell", path: scripts_location + "/haproxy.sh", args: [ "#{NETWORK_PREFIX}.100", "#{NETWORK_PREFIX}.101", "#{NETWORK_PREFIX}.102"]
+    vm.provision "shell", inline: "systemctl restart haproxy"
+    if role_num == 0
+      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "MASTER", node_ip, "#{NETWORK_PREFIX}.#{100+node_num+1}", lb_vip]
+    else
+      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "BACKUP", node_ip, "#{NETWORK_PREFIX}.#{100+node_num-1}", lb_vip]
+    end
+  end
+
   if vm.box.to_s.include?("microos")
     vm.provision 'k3s-reload', type: 'reload', run: 'once'
     if !EXTERNAL_DB.empty?
