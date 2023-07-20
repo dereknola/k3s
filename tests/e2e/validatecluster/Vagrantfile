@@ -96,10 +96,11 @@ def provision(vm, role, role_num, node_num)
     vm.provision "Conf haproxy", type: "shell", path: scripts_location + "/haproxy.sh", args: [ "#{NETWORK_PREFIX}.100", "#{NETWORK_PREFIX}.101", "#{NETWORK_PREFIX}.102"]
     vm.provision "shell", inline: "systemctl restart haproxy"
     if role_num == 0
-      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "MASTER", node_ip, "#{NETWORK_PREFIX}.#{100+node_num+1}", lb_vip]
+      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "MASTER", lb_vip]
     else
-      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "BACKUP", node_ip, "#{NETWORK_PREFIX}.#{100+node_num-1}", lb_vip]
+      vm.provision "Conf keepalived", type: "shell", path: scripts_location + "/keepalived.sh", args: [ "BACKUP", lb_vip]
     end
+    vm.provision "shell", inline: "systemctl restart keepalived"
   end
 
   if vm.box.to_s.include?("microos")

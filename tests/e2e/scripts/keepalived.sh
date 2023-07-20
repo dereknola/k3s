@@ -1,15 +1,11 @@
 #!/bin/bash
 
 state=$1
-vip=$4
+vip=$2
 
 if [ "$state" = "MASTER" ]; then
-    src_IP=$2
-    peer_IP=$3
     lb_priority=200
 else
-    src_IP=$3
-    peer_IP=$2
     lb_priority=100
 fi
 
