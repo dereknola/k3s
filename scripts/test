@@ -21,6 +21,13 @@ docker ps
 
 # ---
 
+# If GH_MATRIX is set, we are running in a matrix build and only need to run the specified test
+if [ -n "$GH_MATRIX" ]; then
+  . ./tests/docker/test-run-$GH_MATRIX
+  exit 0
+fi
+
+
 . ./tests/docker/test-run-basics
 echo "Did test-run-basics $?"
 
