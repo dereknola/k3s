@@ -28,10 +28,7 @@ permissions:
 jobs:
   test:
     name: Unit Tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - name: Checkout
