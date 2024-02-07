@@ -511,7 +511,7 @@ run-test() {
     )
 
     export PROVISION_LOCK=$(mktemp)
-    ./scripts/test-runner "$@" &
+    ./tests/docker/test-runner "$@" &
     pids+=($!)
 
     (
