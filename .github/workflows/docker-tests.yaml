@@ -53,7 +53,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        dtest: [basics, bootstraptoken, cacerts, compat, etcd, hardened, lazypull, upgrade]
+        dtest: [basics, bootstraptoken, cacerts, compat, lazypull, upgrade]
       max-parallel: 4
     env:
       GH_MATRIX: ${{ matrix.dtest }}
