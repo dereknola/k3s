@@ -16,6 +16,7 @@ on:
       - "install.sh"
       - "tests/**"
       - "!tests/integration**"
+      - "!tests/docker**"
       - "!tests/e2e**"
       - ".github/**"
       - "!.github/workflows/integration.yaml"
@@ -30,10 +31,13 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
-  test:
+    with:
+      upload-image: true
+
+  int-test:
     needs: build
     name: Integration Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -76,3 +80,32 @@ jobs:
         files: ./${{ matrix.itest }}.out
         flags: inttests # optional
         verbose: true # optional (default = false)
+
+  docker-test:
+    needs: build
+    name: Docker Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: # etcd takes the longest, so we run it first
+        dtest: [etcd, basics, bootstraptoken, cacerts, compat, lazypull, upgrade]
+      max-parallel: 4
+    env:
+      GH_MATRIX: ${{ matrix.dtest }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Download K3s image
+      uses: actions/download-artifact@v3
+      with:
+        name: k3s-docker
+        path: /tmp
+    - name: Load K3s image
+      run: docker image load -i /tmp/k3s-image.tar
+    - name: Run K3s Docker Test
+      run: ./scripts/test
