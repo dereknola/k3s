@@ -59,7 +59,7 @@ jobs:
           **/go.sum
           **/go.mod
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: k3s
         path: ./dist/artifacts
@@ -101,7 +101,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     - name: Download K3s image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: k3s-docker
         path: /tmp
