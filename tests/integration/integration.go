@@ -237,7 +237,7 @@ func K3sTestLock() (int, error) {
 
 // K3sStartServer acquires an exclusive lock on a temporary file, then launches a k3s cluster
 // with the provided arguments. Subsequent/parallel calls to this function will block until
-// the original lock is cleared using K3sKillServer
+// the original lock is cleared using K3sCleanup
 func K3sStartServer(inputArgs ...string) (*K3sServer, error) {
 	if !IsRoot() {
 		return nil, errors.New("integration tests must be run as sudo/root")
