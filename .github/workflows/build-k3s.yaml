@@ -23,13 +23,23 @@ jobs:
     steps:
     - name: Checkout K3s
       uses: actions/checkout@v4
-    - name: Build K3s binary
-      run: |
-        DOCKER_BUILDKIT=1 SKIP_IMAGE=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 make
-        sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
-    - name: Build K3s image
+    - name: Build K3s binary and image
       if: inputs.upload-image == true
-      run: make package-image
+      run: |
+        DOCKER_BUILDKIT=1 SKIP_AIRGAP=1 SKIP_VALIDATE=1 GOCOVER=1 make
+        sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
+        docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
+    - name: Build K3s binary
+      if: inputs.upload-image == false
+      run: |
+        GOCOVER=1 make local
+        sha256sum dist/artifacts/k3s | sed 's|dist/artifacts/||' > dist/artifacts/k3s.sha256sum
+    - name: "Upload K3s artifacts"
+      if: inputs.upload-repo == false
+      uses: actions/upload-artifact@v4
+      with:
+        name: k3s
+        path: dist/artifacts/k3s*
     - name: bundle repo
       if: inputs.upload-repo == true
       run: |
@@ -41,12 +51,3 @@ jobs:
       with:
         name: k3s-repo.tar.gz
         path: k3s-repo.tar.gz
-    - name: "Save K3s image"
-      if: inputs.upload-image == true
-      run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
-    - name: "Upload K3s binary"
-      if: inputs.upload-repo == false
-      uses: actions/upload-artifact@v4
-      with:
-        name: k3s
-        path: dist/artifacts/k3s*
