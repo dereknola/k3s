@@ -40,11 +40,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        itest: [certrotation, custometcdargs, etcdrestore, 
-          dualstack, etcdrestore, etcdsnapshot, flannelnone,
-          kubeflags, localstorage, longhorn, secretsencryption,
-          startup]
-      max-parallel: 3
+        itest: [startup, kubeflags, etcdsnapshot, # These 3 take the longest, so start them first
+          certrotation, custometcdargs, dualstack, etcdrestore,
+          flannelnone, localstorage, longhorn, secretsencryption]
+      max-parallel: 6
     steps:
     - name: Checkout
       uses: actions/checkout@v4
