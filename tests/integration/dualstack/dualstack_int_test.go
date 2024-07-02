@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -20,7 +19,7 @@ var dualStackServerArgs = []string{
 var testLock int
 
 var _ = BeforeSuite(func() {
-	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
+	if !testutil.IsExistingServer() {
 		var err error
 		testLock, err = testutil.K3sTestLock()
 		Expect(err).ToNot(HaveOccurred())
@@ -33,8 +32,6 @@ var _ = Describe("dual stack", Ordered, func() {
 	BeforeEach(func() {
 		if testutil.IsExistingServer() && !testutil.ServerArgsPresent(dualStackServerArgs) {
 			Skip("Test needs k3s server with: " + strings.Join(dualStackServerArgs, " "))
-		} else if os.Getenv("CI") == "true" {
-			Skip("Github environment does not support IPv6")
 		}
 	})
 	When("a ipv4 and ipv6 cidr is present", func() {
@@ -59,7 +56,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	if !testutil.IsExistingServer() && os.Getenv("CI") != "true" {
+	if !testutil.IsExistingServer() {
 		if failed {
 			testutil.K3sSaveLog(dualStackServer, false)
 		}
