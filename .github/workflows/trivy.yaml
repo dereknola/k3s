@@ -1,0 +1,39 @@
+name: PR Comment Triggered Trivy Scan
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  trivy_scan:
+    if: github.event.issue.pull_request && github.event.comment.body == '/trivy'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.issue.pull_request.head.ref }}
+
+    - name: Build K3s Image
+      run: |
+        make local
+        make package-image
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.20.0
+      with:
+        image-ref: 'rancher/k3s'
+        format: 'table'
+        severity: "HIGH,CRITICAL"
+        output: "trivy-report.txt"
+    
+    - name: Add Trivy Report to PR
+      run: |
+        echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
+        echo '```' >> trivy-report.txt
+        gh repo set-default ${{ github.repository }}
+        gh pr comment ${{ github.event.issue.number }} -F trivy-report.txt
