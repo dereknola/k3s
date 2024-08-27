@@ -13,6 +13,10 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+    - name: Comment Status on PR
+      run: |
+        gh repo set-default ${{ github.repository }}
+        gh pr comment ${{ github.event.issue.number }} -b ":construction: Running Trivy scan started on PR :construction: "
     - name: Checkout PR code
       uses: actions/checkout@v4
       with:
@@ -35,5 +39,4 @@ jobs:
       run: |
         echo '```' | cat - trivy-report.txt > temp && mv temp trivy-report.txt
         echo '```' >> trivy-report.txt
-        gh repo set-default ${{ github.repository }}
-        gh pr comment ${{ github.event.issue.number }} -F trivy-report.txt
+        gh issue comment ${{ github.event.issue.number }} --edit-last -F trivy-report.txt
