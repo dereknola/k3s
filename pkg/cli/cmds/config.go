@@ -10,7 +10,7 @@ var (
 	// call urfave
 	ConfigFlag = &cli.StringFlag{
 		Name:   "config,c",
-		Usage:  "(config) Load configuration from `FILE`",
+		Usage:  "(config) xxxLoad configuration from `FILE`",
 		EnvVar: version.ProgramUpper + "_CONFIG_FILE",
 		Value:  "/etc/rancher/" + version.Program + "/config.yaml",
 	}
