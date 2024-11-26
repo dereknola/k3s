@@ -30,6 +30,25 @@ env:
 jobs:
   build:
     uses: ./.github/workflows/build-k3s.yaml
+  build-go-tests:
+    name: "Build Go Tests"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Build Go Tests
+      run: |
+        mkdir -p ./dist/artifacts
+        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/integration/...
+    - name: Upload Go Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-go-tests
+        path: ./dist/artifacts/*.test
+        compression-level: 9
+        retention-days: 1
   itest:
     needs: build
     name: Integration Tests
@@ -43,20 +62,23 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    - name: Install Go
-      uses: ./.github/actions/setup-go
     - name: "Download k3s binary"
       uses: actions/download-artifact@v4
       with:
         name: k3s
         path: ./dist/artifacts
-    - name: Run Integration Tests
+    - name: Download Go Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: integration-go-tests
+        path: ./dist/artifacts
+    - name: Run ${{ matrix.dtest }} Integration Test
       run: | 
+        chmod +x ./dist/artifacts/${{ matrix.itest }}.test
+        mv ./dist/artifacts/${{ matrix.itest }}.test ./tests/integration/${{ matrix.itest }}/
         chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" go test -timeout=45m ./tests/integration/${{ matrix.itest }}/... -run Integration -ginkgo.v -test.v
+        sudo -E env "PATH=$PATH" ./tests/integration/${{ matrix.itest }}/${{ matrix.itest }}.test -ginkgo.v -test.v
     - name: On Failure, Launch Debug Session
       uses: lhotari/action-upterm@v1
       if: ${{ failure() }}
