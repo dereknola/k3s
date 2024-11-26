@@ -205,7 +205,7 @@ jobs:
         name: docker-go-tests
         path: ./dist/artifacts
     - name: Run ${{ matrix.dtest }} Test
-      # Put the compied test binary back in the same place as the test source
+      # Put the compiled test binary back in the same place as the test source
       run: |
         chmod +x ./dist/artifacts/${{ matrix.dtest }}.test
         mv ./dist/artifacts/${{ matrix.dtest }}.test ./tests/docker/${{ matrix.dtest }}/
