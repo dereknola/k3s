@@ -29,12 +29,64 @@ permissions:
 
 jobs:
   build:
+    name: Build K3s
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+  build-go-tests:
+    name: "Build Go Tests"
+    runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.branch_step.outputs.BRANCH_NAME }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Go
+      uses: ./.github/actions/setup-go
+    - name: Build Docker Tests
+      run: |
+        mkdir -p ./dist/artifacts/docker
+        go test -c -ldflags="-w -s" -o ./dist/artifacts/docker ./tests/docker/...
+    - name: Upload Docker Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-go-tests
+        path: ./dist/artifacts/docker/*.test
+        compression-level: 9
+        retention-days: 1
+    - name: Build E2E Tests
+      run: |
+        mkdir -p ./dist/artifacts/e2e
+        go test -c -ldflags="-w -s" -o ./dist/artifacts/e2e ./tests/e2e/...
+    - name: Upload E2E Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-go-tests
+        path: ./dist/artifacts/e2e/*.test
+        compression-level: 9
+        retention-days: 1
+    # For upgrade and skew tests, we need to know the branch name this run is based off.
+    # Since this is predetermined, we can run this step before the docker-go job, saving time.
+    # For PRs we can use the base_ref (ie the target branch of the PR).
+    # For pushes to k3s-io/k3s, the branch_name is a valid ref, master or release-x.y.
+    # For pushes to a fork, we need to determine the branch name by finding the parent branch from git show-branch history.
+    - name: Determine branch name
+      id: branch_step
+      run: |
+        if [ ${{ github.repository }} = "k3s-io/k3s" ]; then 
+          BRANCH_NAME=$(echo ${{ github.base_ref || github.ref_name }})
+        elif [ -z "${{ github.base_ref }}" ]; then
+          # We are in a fork, and need some git history to determine the branch name
+          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
+          BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
+        else
+          BRANCH_NAME=${{ github.base_ref }}
+        fi
+        echo "Branch Name is $BRANCH_NAME"
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
   e2e:
     name: "E2E Tests"
-    needs: build
+    needs: [build, build-go-tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
@@ -58,11 +110,6 @@ jobs:
       - name: "Vagrant Plugin(s)"
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
       
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with: 
-          go-version-file: 'go.mod'
-          cache: false
       - name: Install Kubectl
         run: |
            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -72,14 +119,20 @@ jobs:
         with:
           name: k3s
           path: ./dist/artifacts
-      
+      - name: Download Go Tests
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-go-tests
+          path: ./dist/artifacts
       - name: Run ${{ matrix.etest }} Test
         env:
           E2E_GOCOVER: "true"
         run: | 
           chmod +x ./dist/artifacts/k3s
+          chmod +x ./dist/artifacts/${{ matrix.etest }}.test
+          mv ./dist/artifacts/${{ matrix.etest }}.test ./tests/e2e/${{ matrix.etest }}/
           cd tests/e2e/${{ matrix.etest }}
-          go test -v -timeout=45m ./${{ matrix.etest}}_test.go -ci -local
+          ./${{ matrix.etest}}.test -ci -local
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
         if: ${{ failure() }}
@@ -121,47 +174,6 @@ jobs:
         . ./tests/docker/test-helpers
         . ./tests/docker/test-run-${{ matrix.dtest }}
         echo "Did test-run-${{ matrix.dtest }} pass $?"
-  
-  build-go-tests:
-    name: "Build Go Tests"
-    runs-on: ubuntu-latest
-    outputs:
-      branch_name: ${{ steps.branch_step.outputs.BRANCH_NAME }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Install Go
-      uses: ./.github/actions/setup-go
-    - name: Build Go Tests
-      run: |
-        mkdir -p ./dist/artifacts
-        go test -c -ldflags="-w -s" -o ./dist/artifacts ./tests/docker/...
-    - name: Upload Go Tests
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-go-tests
-        path: ./dist/artifacts/*.test
-        compression-level: 9
-        retention-days: 1
-    # For upgrade and skew tests, we need to know the branch name this run is based off.
-    # Since this is predetermined, we can run this step before the docker-go job, saving time.
-    # For PRs we can use the base_ref (ie the target branch of the PR).
-    # For pushes to k3s-io/k3s, the branch_name is a valid ref, master or release-x.y.
-    # For pushes to a fork, we need to determine the branch name by finding the parent branch from git show-branch history.
-    - name: Determine branch name
-      id: branch_step
-      run: |
-        if [ ${{ github.repository }} = "k3s-io/k3s" ]; then 
-          BRANCH_NAME=$(echo ${{ github.base_ref || github.ref_name }})
-        elif [ -z "${{ github.base_ref }}" ]; then
-          # We are in a fork, and need some git history to determine the branch name
-          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
-          BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
-        else
-          BRANCH_NAME=${{ github.base_ref }}
-        fi
-        echo "Branch Name is $BRANCH_NAME"
-        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
      
   docker-go:
     needs: [build, build-go-tests]
