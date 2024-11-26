@@ -50,7 +50,7 @@ jobs:
         compression-level: 9
         retention-days: 1
   itest:
-    needs: build
+    needs: [build, build-go-tests]
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -74,11 +74,12 @@ jobs:
         path: ./dist/artifacts
     - name: Run ${{ matrix.dtest }} Integration Test
       run: | 
+        chmod +x ./dist/artifacts/k3s
         chmod +x ./dist/artifacts/${{ matrix.itest }}.test
         mv ./dist/artifacts/${{ matrix.itest }}.test ./tests/integration/${{ matrix.itest }}/
-        chmod +x ./dist/artifacts/k3s
         mkdir -p $GOCOVERDIR
-        sudo -E env "PATH=$PATH" ./tests/integration/${{ matrix.itest }}/${{ matrix.itest }}.test -ginkgo.v -test.v
+        cd ./tests/integration/${{ matrix.itest }}
+        sudo -E env "PATH=$PATH" ./${{ matrix.itest }}.test -ginkgo.v -test.v
     - name: On Failure, Launch Debug Session
       uses: lhotari/action-upterm@v1
       if: ${{ failure() }}
