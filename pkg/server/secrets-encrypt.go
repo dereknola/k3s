@@ -221,6 +221,9 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), states); err != nil && !force {
 		return err
 	}
+	if server.EncryptKeyType == secretsencrypt.SecretBoxKeyType {
+		return fmt.Errorf("prepare does not support secretbox key type, use rotate-keys instead")
+	}
 
 	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
@@ -250,6 +253,9 @@ func encryptionPrepare(ctx context.Context, server *config.Control, force bool) 
 func encryptionRotate(ctx context.Context, server *config.Control, force bool) error {
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionPrepare); err != nil && !force {
 		return err
+	}
+	if server.EncryptKeyType == secretsencrypt.SecretBoxKeyType {
+		return fmt.Errorf("rotate does not support secretbox key type, use rotate-keys instead")
 	}
 
 	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
@@ -290,6 +296,10 @@ func encryptionReencrypt(ctx context.Context, server *config.Control, force bool
 	if err := verifyEncryptionHashAnnotation(server.Runtime, server.Runtime.Core.Core(), secretsencrypt.EncryptionRotate); err != nil && !force {
 		return err
 	}
+	if server.EncryptKeyType == secretsencrypt.SecretBoxKeyType {
+		return fmt.Errorf("reencrypt does not support secretbox key type, use rotate-keys instead")
+	}
+
 	// Set the reencrypt-active annotation so other nodes know we are in the process of reencrypting.
 	// As this stage is not persisted, we do not write the annotation to file
 	nodeName := os.Getenv("NODE_NAME")
@@ -395,7 +405,8 @@ func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip boo
 		return err
 	}
 
-	// Remove last key
+	// Remove old key. If there is only one of that key type, the cluster just
+	// migrated between key types. Check for the other key type and remove that.
 	curKeys, err := secretsencrypt.GetEncryptionKeys(server.Runtime)
 	if err != nil {
 		return err
@@ -403,11 +414,21 @@ func reencryptAndRemoveKey(ctx context.Context, server *config.Control, skip boo
 
 	switch server.EncryptKeyType {
 	case secretsencrypt.AESCBCKeyType:
-		logrus.Infoln("Removing aescbc key: ", curKeys.AESCBCKeys[len(curKeys.AESCBCKeys)-1])
-		curKeys.AESCBCKeys = curKeys.AESCBCKeys[:len(curKeys.AESCBCKeys)-1]
+		if len(curKeys.AESCBCKeys) == 1 && len(curKeys.SBKeys) > 0 {
+			logrus.Infoln("Removing secretbox key: ", curKeys.SBKeys[len(curKeys.SBKeys)-1])
+			curKeys.SBKeys = curKeys.SBKeys[:len(curKeys.SBKeys)-1]
+		} else {
+			logrus.Infoln("Removing aescbc key: ", curKeys.AESCBCKeys[len(curKeys.AESCBCKeys)-1])
+			curKeys.AESCBCKeys = curKeys.AESCBCKeys[:len(curKeys.AESCBCKeys)-1]
+		}
 	case secretsencrypt.SecretBoxKeyType:
-		logrus.Infoln("Removing secretbox key: ", curKeys.SBKeys[len(curKeys.SBKeys)-1])
-		curKeys.SBKeys = curKeys.SBKeys[:len(curKeys.SBKeys)-1]
+		if len(curKeys.SBKeys) == 1 && len(curKeys.AESCBCKeys) > 0 {
+			logrus.Infoln("Removing aescbc key: ", curKeys.AESCBCKeys[len(curKeys.AESCBCKeys)-1])
+			curKeys.AESCBCKeys = curKeys.AESCBCKeys[:len(curKeys.AESCBCKeys)-1]
+		} else {
+			logrus.Infoln("Removing secretbox key: ", curKeys.SBKeys[len(curKeys.SBKeys)-1])
+			curKeys.SBKeys = curKeys.SBKeys[:len(curKeys.SBKeys)-1]
+		}
 	}
 
 	if err = secretsencrypt.WriteEncryptionConfig(server.Runtime, curKeys, server.EncryptKeyType, true); err != nil {
