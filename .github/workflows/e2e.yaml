@@ -85,7 +85,7 @@ jobs:
         if: ${{ failure() }}
         with:
           name: ${{ matrix.etest}}-journald-logs
-          path: ./*-jlog.txt
+          path: tests/e2e/${{ matrix.etest }}/*-jlog.txt
           retention-days: 30
       - name: On Failure, Launch Debug Session
         uses: lhotari/action-upterm@v1
