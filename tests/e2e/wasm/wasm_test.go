@@ -111,6 +111,7 @@ var _ = Describe("Verify Can run Wasm workloads", Ordered, func() {
 		})
 
 		It("Interact with Wasm applications", func() {
+			Fail("test me")
 			ingressIPs, err := e2e.FetchIngressIP(kubeConfigFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ingressIPs).To(HaveLen(1))
@@ -136,7 +137,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	if failed {
-		AddReportEntry("journald-logs", e2e.TailJournalLogs(1000, append(serverNodeNames, agentNodeNames...)))
+		Expect(e2e.SaveJournalLogs(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	} else {
 		Expect(e2e.GetCoverageReport(append(serverNodeNames, agentNodeNames...))).To(Succeed())
 	}
