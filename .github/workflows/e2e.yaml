@@ -166,7 +166,7 @@ jobs:
           fi
         elif [ -z "${{ github.base_ref }}" ]; then
           # We are in a fork, and need some git history to determine the branch name
-          git fetch origin --depth=100 +refs/heads/*:refs/remotes/origin/*
+          git fetch origin --depth=100
           BRANCH_NAME=$(git show-branch -a 2> /dev/null  | grep '\*' | grep -v `git rev-parse --abbrev-ref HEAD` | head -n1 |  sed 's/.*\[\(.*\/\)\(.*\)\].*/\2/' | sed 's/[\^~].*//')
         else
           BRANCH_NAME=${{ github.base_ref }}
@@ -180,7 +180,12 @@ jobs:
           echo "Branch name ${{ steps.branch_step.outputs.branch_name }} does not match pattern"
           exit 1
         fi
-
+    - name: On Failure, Launch Debug Session
+      uses: lhotari/action-upterm@v1
+      if: ${{ failure() }}
+      with:
+        ## If no one connects after 5 minutes, shut down server.
+        wait-timeout-minutes: 5
   docker-go:
     needs: [build, build-go-tests]
     name: Docker Tests In GO
