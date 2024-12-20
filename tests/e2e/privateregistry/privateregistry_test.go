@@ -138,6 +138,7 @@ var _ = Describe("Verify Create", Ordered, func() {
 
 			cmd := "curl " + pod.IP
 			Expect(e2e.RunCmdOnNode(cmd, serverNodeNames[0])).To(ContainSubstring("Welcome to nginx!"))
+			Fail("test me")
 		})
 
 	})
