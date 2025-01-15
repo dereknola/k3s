@@ -16,6 +16,7 @@ replace (
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.4
 	github.com/google/cadvisor => github.com/k3s-io/cadvisor v0.51.0-k3s1
 	github.com/googleapis/gax-go/v2 => github.com/googleapis/gax-go/v2 v2.12.0
+	github.com/ipfs/boxo => github.com/dereknola/boxo v0.26.1-0.20250110203613-d39268a527a6
 	github.com/open-policy-agent/opa => github.com/open-policy-agent/opa v0.59.0 // github.com/Microsoft/hcsshim using bad version v0.42.2
 	github.com/opencontainers/runc => github.com/k3s-io/runc v1.2.1-k3s1
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.11.0
@@ -111,18 +112,18 @@ require (
 	github.com/k3s-io/helm-controller v0.16.5
 	github.com/k3s-io/kine v0.13.5
 	github.com/klauspost/compress v1.17.11
-	github.com/libp2p/go-libp2p v0.37.2
+	github.com/libp2p/go-libp2p v0.38.1
 	github.com/minio/minio-go/v7 v7.0.70
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo/v2 v2.21.0
+	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.35.1
 	github.com/opencontainers/runc v1.2.1
 	github.com/opencontainers/selinux v1.11.1
 	github.com/otiai10/copy v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/common v0.61.0
 	github.com/rancher/dynamiclistener v0.6.0-rc1
 	github.com/rancher/lasso v0.0.0-20241202185148-04649f379358
 	github.com/rancher/permissions v0.0.0-20240523180510-4001d3d637f7
@@ -147,7 +148,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.31.0
 	golang.org/x/mod v0.22.0
-	golang.org/x/net v0.31.0
+	golang.org/x/net v0.33.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
 	google.golang.org/grpc v1.68.0
@@ -281,7 +282,7 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
+	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
@@ -316,7 +317,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/libopenstorage/openstorage v1.0.0 // indirect
@@ -330,7 +331,7 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.4 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-nat v0.2.0 // indirect
-	github.com/libp2p/go-netroute v0.2.1 // indirect
+	github.com/libp2p/go-netroute v0.2.2 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.1 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
@@ -396,22 +397,23 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
-	github.com/pion/datachannel v1.5.9 // indirect
+	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v2 v2.2.12 // indirect
-	github.com/pion/ice/v2 v2.3.36 // indirect
+	github.com/pion/ice/v2 v2.3.37 // indirect
 	github.com/pion/interceptor v0.1.37 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.12 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtcp v1.2.14 // indirect
-	github.com/pion/rtp v1.8.9 // indirect
-	github.com/pion/sctp v1.8.33 // indirect
+	github.com/pion/rtcp v1.2.15 // indirect
+	github.com/pion/rtp v1.8.10 // indirect
+	github.com/pion/sctp v1.8.35 // indirect
 	github.com/pion/sdp/v3 v3.0.9 // indirect
 	github.com/pion/srtp/v2 v2.0.20 // indirect
 	github.com/pion/stun v0.6.1 // indirect
 	github.com/pion/transport/v2 v2.2.10 // indirect
+	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/pion/turn/v2 v2.1.6 // indirect
-	github.com/pion/webrtc/v3 v3.3.4 // indirect
+	github.com/pion/webrtc/v3 v3.3.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
@@ -462,19 +464,19 @@ require (
 	go.uber.org/dig v1.18.0 // indirect
 	go.uber.org/fx v1.23.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
+	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
-	golang.org/x/tools v0.27.0 // indirect
+	golang.org/x/tools v0.28.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/protobuf v1.35.2 // indirect
+	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
