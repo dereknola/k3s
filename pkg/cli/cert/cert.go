@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func commandSetup(app *cli.Context, cfg *cmds.Server, sc *server.Config) (string, error) {
@@ -71,7 +71,7 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	if len(cmds.ServicesList) == 0 {
+	if len(cmds.ServicesList.Value()) == 0 {
 		// detecting if the command is being run on an agent or server based on presence of the server data-dir
 		_, err := os.Stat(serverConfig.ControlConfig.DataDir)
 		if err != nil {
@@ -79,14 +79,14 @@ func check(app *cli.Context, cfg *cmds.Server) error {
 				return err
 			}
 			logrus.Infof("Agent detected, checking agent certificates")
-			cmds.ServicesList = services.Agent
+			cmds.ServicesList = cli.NewStringSlice(services.Agent...)
 		} else {
 			logrus.Infof("Server detected, checking agent and server certificates")
-			cmds.ServicesList = services.All
+			cmds.ServicesList = cli.NewStringSlice(services.All...)
 		}
 	}
 
-	fileMap, err := services.FilesForServices(serverConfig.ControlConfig, cmds.ServicesList)
+	fileMap, err := services.FilesForServices(serverConfig.ControlConfig, cmds.ServicesList.Value())
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 		return err
 	}
 
-	if len(cmds.ServicesList) == 0 {
+	if len(cmds.ServicesList.Value()) == 0 {
 		// detecting if the command is being run on an agent or server based on presence of the server data-dir
 		_, err := os.Stat(serverConfig.ControlConfig.DataDir)
 		if err != nil {
@@ -179,14 +179,14 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 				return err
 			}
 			logrus.Infof("Agent detected, rotating agent certificates")
-			cmds.ServicesList = services.Agent
+			cmds.ServicesList = cli.NewStringSlice(services.Agent...)
 		} else {
 			logrus.Infof("Server detected, rotating agent and server certificates")
-			cmds.ServicesList = services.All
+			cmds.ServicesList = cli.NewStringSlice(services.All...)
 		}
 	}
 
-	fileMap, err := services.FilesForServices(serverConfig.ControlConfig, cmds.ServicesList)
+	fileMap, err := services.FilesForServices(serverConfig.ControlConfig, cmds.ServicesList.Value())
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func rotate(app *cli.Context, cfg *cmds.Server) error {
 
 	// The dynamiclistener cache file can't be simply deleted, we need to create a trigger
 	// file to indicate that the cert needs to be regenerated on startup.
-	for _, service := range cmds.ServicesList {
+	for _, service := range cmds.ServicesList.Value() {
 		if service == version.Program+services.ProgramServer {
 			dynamicListenerRegenFilePath := filepath.Join(serverConfig.ControlConfig.DataDir, "tls", "dynamic-cert-regenerate")
 			if err := os.WriteFile(dynamicListenerRegenFilePath, []byte{}, 0600); err != nil {
@@ -256,7 +256,7 @@ func backupCertificates(serverDataDir, agentDataDir string, fileMap map[string][
 }
 
 func validateCertConfig() error {
-	for _, s := range cmds.ServicesList {
+	for _, s := range cmds.ServicesList.Value() {
 		if !services.IsValid(s) {
 			return errors.New("service " + s + " is not recognized")
 		}
