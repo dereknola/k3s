@@ -252,13 +252,13 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 	}
 
 	if serverConfig.ControlConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
-		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
+		serverConfig.ControlConfig.PrivateIP = util.GetFirstValidIPString(&cmds.AgentConfig.NodeIP)
 	}
 
 	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
 	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
 	// service endpoint are added later when the certificates are created.
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, &cmds.AgentConfig.NodeIP)
 	if err != nil {
 		return err
 	}
@@ -303,12 +303,12 @@ func run(app *cli.Context, cfg *cmds.Server, leaderControllers server.CustomCont
 
 		// if not set, try setting advertise-ip from agent node-external-ip
 		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeExternalIP)
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(&cmds.AgentConfig.NodeExternalIP)
 		}
 
 		// if not set, try setting advertise-ip from agent node-ip
 		if serverConfig.ControlConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP.Value()) != 0 {
-			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(cmds.AgentConfig.NodeIP)
+			serverConfig.ControlConfig.AdvertiseIP = util.GetFirstValidIPString(&cmds.AgentConfig.NodeIP)
 		}
 	}
 
