@@ -1,18 +1,5 @@
-TARGETS := $(shell ls scripts | grep -v \\.sh)
 GO_FILES ?= $$(find . -name '*.go' | grep -v generated)
 SHELL := /bin/bash
-
-
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/v0.6.0/dapper-$$(uname -s)-$$(uname -m) > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
-
-.PHONY: docker.sock
-docker.sock:
-	while ! docker version 1>/dev/null; do sleep 1; done
 
 $(TARGETS): .dapper docker.sock
 	./.dapper $@
@@ -23,10 +10,6 @@ deps:
 
 release:
 	./scripts/release.sh
-
-.DEFAULT_GOAL := ci
-
-.PHONY: $(TARGETS)
 
 build/data:
 	mkdir -p $@
@@ -43,7 +26,9 @@ format:
 	gofmt -s -l -w $(GO_FILES)
 	goimports -w $(GO_FILES)
 
-
+clean:
+	rm -rf dist bin build
+	
 .PHONY: local-validate
 local-validate:
 	DOCKER_BUILDKIT=1 docker build \
