@@ -29,14 +29,22 @@ permissions:
 
 jobs:
   build:
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/build-k3s.yaml
     with:
       upload-image: true
+      cache: read
   build-arm64:
     uses: ./.github/workflows/build-k3s.yaml
+    permissions:
+      contents: read
+      packages: read
     with:
       arch: ubuntu-24.04-arm
       upload-image: true
+      cache: read
   e2e:
     name: "E2E Tests"
     needs: build
