@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  packages: write # GHCR cache
 
 jobs:
   build:
@@ -59,8 +60,8 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
-        cache-from: type=gha
-        cache-to: type=gha
+        cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:cache
+        cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:cache,mode=max
         push: false
         outputs: type=local,dest=.
 
