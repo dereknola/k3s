@@ -15,9 +15,20 @@ on:
         type: boolean
         required: false
         default: false
+      cache:
+        type: string
+        description: 'Cache mode: "read", "write", or empty for no cache'
+        required: false
+        default: ''
 
-permissions:
-  contents: read
+# Note that is workflow requires the following permissions:
+#   contents: read
+# If using the cache: write option, you will need:
+#   packages: write
+# If using the cache: read option, you will need:
+#   packages: read
+
+
 
 jobs:
   build:
@@ -46,6 +57,14 @@ jobs:
           echo "dirty=${DIRTY}"
         } >> "$GITHUB_OUTPUT"
 
+    - name: Login to GitHub Container Registry
+      if: inputs.cache == 'write'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build K3s Binary 
       uses: docker/build-push-action@v6
       with:
@@ -59,8 +78,8 @@ jobs:
           TREE_STATE=${{ steps.git_vars.outputs.tree_state }}
           COMMIT=${{ steps.git_vars.outputs.commit }}
           DIRTY=${{ steps.git_vars.outputs.dirty }}
-        cache-from: type=gha
-        cache-to: type=gha
+        cache-from: ${{ inputs.cache != '' && format('type=registry,ref=ghcr.io/{0}:cache', github.repository) || '' }}
+        cache-to: ${{ inputs.cache == 'write' && format('type=registry,ref=ghcr.io/{0}:cache,mode=max', github.repository) || '' }}
         push: false
         outputs: type=local,dest=.
 

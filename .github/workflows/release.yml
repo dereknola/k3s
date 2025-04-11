@@ -1,0 +1,94 @@
+name: K3s Release
+
+on:
+  release:
+    types: [published] # Run only when a release is published
+
+permissions:
+  contents: write     # Needed to write release assets
+  packages: write     # Needed to push image to GHCR
+
+jobs:
+  build-binary-amd64:
+    name: Build Binary AMD64
+    uses: ./.github/workflows/build-k3s.yaml # Path to your reusable workflow
+    with:
+      cache: '' # No cache for release builds
+
+  build-binary-arm64:
+    name: Build Binary ARM64
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      arch: ubuntu-24.04-arm
+      cache: ''
+
+  build-release-image:
+    name: Build and Push Multi-Arch Image
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/k3s
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push K3s runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./package/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            DRONE_TAG=${{ github.ref_name }}
+
+  create-release-assets:
+    name: Prepare and Upload Release Assets
+    runs-on: ubuntu-latest
+    needs: [build-binary-amd64, build-binary-arm64]
+    steps:
+    - name: "Download Binaries"
+      uses: actions/download-artifact@v4
+      with:
+        name: k3s-*
+        path: ./dist/artifacts
+        merge-multiple: true
+
+    - name: Append sha256sum files
+      run: |
+        for file in ./dist/artifacts/*.sha256sum; do
+          mv "$file" "${file}.txt"
+        done
+    
+    - name: Upload Assets to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/artifacts/k3s-*
+          dist/artifacts/sha256sun*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
