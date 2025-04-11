@@ -55,7 +55,12 @@ local-validate:
 .PHONY: local-binary
 local-binary:
 	@echo "INFO: Building K3s binaries and assets..."
+	. ./scripts/git_version.sh && \
 	DOCKER_BUILDKIT=1 docker build \
+		--build-arg "GIT_TAG=$$GIT_TAG" \
+		--build-arg "TREE_STATE=$$TREE_STATE" \
+		--build-arg "COMMIT=$$COMMIT" \
+		--build-arg "DIRTY=$$DIRTY" \
 		--build-arg="GOCOVER=$(GOCOVER)" \
 		--build-arg="GOOS=$(GOOS)" \
 		--build-arg="DEBUG=$(DEBUG)" \

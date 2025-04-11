@@ -33,7 +33,12 @@ WORKDIR ${SRC_DIR}/
 
 
 FROM infra AS manifests
+ARG GIT_TAG
+ARG TREE_STATE
+ARG COMMIT
+ARG DIRTY
 ARG GOOS
+ENV NO_DAPPER=true
 # Used by both build and validate stages, better caching if we do this in a separate stage
 COPY ./scripts/ ./scripts
 COPY ./go.mod ./go.sum ./main.go ./
@@ -57,7 +62,6 @@ ARG GOCOVER
 ARG DEBUG
 COPY ./cmd ./cmd
 COPY ./tests ./tests
-COPY ./.git ./.git
 COPY ./pkg ./pkg
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
