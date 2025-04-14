@@ -1,6 +1,7 @@
 FROM alpine:3.21 as base
 RUN apk add -U ca-certificates zstd tzdata
-COPY build/out/data-linux.tar.zst /
+ARG ARCH=""
+COPY build/out/data-linux$ARCH.tar.zst /
 RUN mkdir -p /image/etc/ssl/certs /image/run /image/var/run /image/tmp /image/lib/modules /image/lib/firmware /image/var/lib/rancher/k3s/data/cni && \
     zstdcat -d /data-linux.tar.zst | tar -xa -C /image && \
     for FILE in cni $(/image/bin/find /image/bin -lname cni -printf "%f\n"); do ln -s /bin/cni /image/var/lib/rancher/k3s/data/cni/$FILE; done && \
