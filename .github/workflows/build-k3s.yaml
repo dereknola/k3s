@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 20
     env:
       BIN_EXT: ${{ inputs.os == 'windows' && '.exe' || '' }}
-      ARTIFACT_EXT: ${{ inputs.os == 'windows' && '-windows' || (contains(inputs.arch, 'arm') && '-arm64' || '') }}
+      ARTIFACT_EXT: ${{ inputs.os == 'windows' && '-windows' || (contains(inputs.arch, 'arm') && '-arm64' || 'amd64') }}
       GOOS: ${{ inputs.os }}
     steps:
     - name: Checkout K3s
