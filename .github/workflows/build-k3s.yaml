@@ -84,7 +84,7 @@ jobs:
         outputs: type=local,dest=.
 
     - name: Caculate binary checksum
-      run: sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+      run: sha256sum dist/artifacts/k3s${{ env.ARTIFACT_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARTIFACT_EXT }}${{ env.BIN_EXT }}.sha256sum
     
     - name: Build K3s image
       if: inputs.upload-image == true && inputs.os == 'linux'
