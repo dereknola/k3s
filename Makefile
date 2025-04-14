@@ -26,7 +26,9 @@ format:
 	gofmt -s -l -w $(GO_FILES)
 	goimports -w $(GO_FILES)
 
-
+clean:
+	rm -rf dist bin build
+	
 .PHONY: local-validate
 local-validate:
 	DOCKER_BUILDKIT=1 docker build \
