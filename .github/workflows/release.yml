@@ -27,6 +27,7 @@ jobs:
   push-release-image:
     name: Build and Push Multi-Arch Image
     runs-on: ubuntu-latest
+    needs: [build-amd64, build-arm64]
     env:
       REGISTRY: ghcr.io
     steps:
