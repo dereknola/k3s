@@ -73,7 +73,6 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             DRONE_TAG=${{ github.ref_name }}
-            ARCH=-${{ matrix.arch }}
 
   upload-release-airgap:
     name: Build Airgap Package for ${{ matrix.arch }}
