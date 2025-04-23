@@ -50,47 +50,6 @@ steps:
       - push
       - tag
 
-- name: github_binary_release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-amd64.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: docker-publish
-  image: plugins/docker
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   image: rancher/dapper:v0.6.0
   secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
@@ -158,103 +117,6 @@ volumes:
 
 ---
 kind: pipeline
-name: arm64
-
-platform:
-  os: linux
-  arch: arm64
-
-trigger:
-  event:
-    exclude:
-    - cron
-    - pull_request
-
-clone:
-  retries: 3
-
-steps:
-- name: build
-  image: rancher/dapper:v0.6.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
-  environment:
-    AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
-    AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
-  commands:
-  - dapper ci
-  - echo "${DRONE_TAG}-arm64" | sed -e 's/+/-/g' >.tags
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-
-- name: github_binary_release
-  image: plugins/github-release
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-arm64.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: docker-publish
-  image: plugins/docker
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: test
-  image: rancher/dapper:v0.6.0
-  secrets: [ AWS_SECRET_ACCESS_KEY-k3s-ci-uploader, AWS_ACCESS_KEY_ID-k3s-ci-uploader ]
-  environment:
-    ENABLE_REGISTRY: 'true'
-    AWS_SECRET_ACCESS_KEY:
-      from_secret: AWS_SECRET_ACCESS_KEY-k3s-ci-uploader
-    AWS_ACCESS_KEY_ID:
-      from_secret: AWS_ACCESS_KEY_ID-k3s-ci-uploader
-  commands:
-  - docker build --target test-k3s -t k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT} -f Dockerfile.test .
-  - >
-    docker run -i -e REPO -e TAG -e DRONE_TAG -e DRONE_BUILD_EVENT -e IMAGE_NAME -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID -e SONOBUOY_VERSION -e ENABLE_REGISTRY
-    -v /var/run/docker.sock:/var/run/docker.sock --privileged --network host -v /tmp:/tmp k3s:test-${DRONE_STAGE_ARCH}-${DRONE_COMMIT}
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-
-volumes:
-- name: docker
-  host:
-    path: /var/run/docker.sock
-
----
-kind: pipeline
 name: arm
 
 platform:
@@ -305,47 +167,6 @@ steps:
   - name: docker
     path: /var/run/docker.sock
 
-- name: github_binary_release
-  image: plugins/github-release:linux-arm
-  settings:
-    api_key:
-      from_secret: github_token
-    prerelease: true
-    checksum:
-    - sha256
-    checksum_file: CHECKSUMsum-arm.txt
-    checksum_flatten: true
-    files:
-    - "dist/artifacts/*"
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
-- name: docker-publish
-  image: plugins/docker:linux-arm
-  settings:
-    dockerfile: package/Dockerfile
-    password:
-      from_secret: docker_password
-    repo: "rancher/k3s"
-    username:
-      from_secret: docker_username
-    build_args_from_env:
-      - DRONE_TAG
-  when:
-    instance:
-    - drone-publish.k3s.io
-    ref:
-    - refs/head/master
-    - refs/tags/*
-    event:
-    - tag
-
 - name: test
   # Refer to comment for arm/build.
   image: rancher/dapper:v0.5.0
@@ -369,63 +190,6 @@ volumes:
 - name: docker
   host:
     path: /var/run/docker.sock
-
----
-kind: pipeline
-name: manifest
-
-platform:
-  os: linux
-  arch: amd64
-
-steps:
-- name: skipfiles
-  image: plugins/git
-  commands:
-  - export NAME=$(test $DRONE_BUILD_EVENT = pull_request && echo remotes/origin/${DRONE_COMMIT_BRANCH:-master} || echo ${DRONE_COMMIT_SHA}~)
-  - export DIFF=$(git --no-pager diff --name-only $NAME | grep -v -f .droneignore);
-  - if [ -z "$DIFF" ]; then
-        echo "All files in PR are on ignore list";
-        exit 78;
-    else
-        echo "Some files in PR are not ignored, $DIFF";
-    fi;
-  when:
-    event:
-    - push
-    - pull_request
-
-- name: manifest
-  image: plugins/docker
-  environment:
-    DOCKER_USERNAME:
-      from_secret: docker_username
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-  settings:
-    dry_run: true
-    dockerfile: Dockerfile.manifest
-    repo: "rancher/k3s-manifest"
-    build_args_from_env:
-    - DOCKER_USERNAME
-    - DOCKER_PASSWORD
-    - DRONE_TAG
-trigger:
-  instance:
-  - drone-publish.k3s.io
-  ref:
-  - refs/head/master
-  - refs/tags/*
-  event:
-    include:
-    - tag
-    exclude:
-      - cron
-
-depends_on:
-- amd64
-- arm64
-- arm
 
 ---
 kind: pipeline
@@ -464,7 +228,7 @@ steps:
       from_secret: pat_username
     PAT_TOKEN:
       from_secret: github_token
-    K3S_RELEASE_TOKEN:
+    SYSTEM_DISPATCH_TOKEN:
       from_secret: release_token_k3s
   commands:
     - apk -U --no-cache add bash
@@ -480,8 +244,8 @@ trigger:
     - tag
 
 depends_on:
-- manifest
-
+- amd64
+- arm
 ---
 kind: pipeline
 name: e2e
