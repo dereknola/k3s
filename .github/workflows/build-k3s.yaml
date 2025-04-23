@@ -117,9 +117,11 @@ jobs:
     - name: Caculate binary checksum
       run: |
         if [ ${{ env.ARCH_EXT }} == '-amd64' ]; then
-          dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+          sha256sum dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+        elif [ ${{ env.ARCH_EXT }} == "-arm" ]; then
+          sha256sum dist/artifacts/k3s-armhf | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}.sha256sum
         else
-          dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+          sha256sum dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
         fi
     
     - name: Build K3s image
