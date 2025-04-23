@@ -13,6 +13,10 @@ on:
         type: boolean
         required: false
         default: false
+      upload-build:
+        type: boolean
+        required: false
+        default: false
       cache:
         type: string
         description: 'Cache mode: "read", "write", or empty for no cache'
@@ -111,7 +115,12 @@ jobs:
         outputs: type=local,dest=.
 
     - name: Caculate binary checksum
-      run: sha256sum dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+      run: |
+        if [ ${{ env.ARCH_EXT }} == '-amd64' ]; then
+          dist/artifacts/k3s${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.BIN_EXT }}.sha256sum
+        else
+          dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }} | sed 's|dist/artifacts/||' > dist/artifacts/k3s${{ env.ARCH_EXT }}${{ env.BIN_EXT }}.sha256sum
+        fi
     
     - name: Build K3s image
       if: inputs.upload-image == true && inputs.os == 'linux'
@@ -120,9 +129,14 @@ jobs:
     - name: "Save K3s image"
       if: inputs.upload-image == true && inputs.os == 'linux'
       run: docker image save rancher/k3s -o ./dist/artifacts/k3s-image.tar
-      
+
+    - name: "Save K3s build"
+      if: inputs.upload-build == true  && inputs.os == 'linux'
+      run: |
+        mv ./build/out/data-linux.tar.zst ./dist/artifacts/data-linux${{ env.ARCH_EXT }}.tar.zst
+
     - name: "Upload K3s Artifacts"
       uses: actions/upload-artifact@v4
       with:
         name: k3s${{ env.ARCH_EXT }}
-        path: dist/artifacts/k3s*
+        path: dist/artifacts/
