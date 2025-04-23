@@ -48,11 +48,11 @@ jobs:
       if: inputs.arch == 'arm'
       uses: docker/setup-qemu-action@v3
       with:
-        platforms: linux/arm/v7
+        cache-image: false
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
+  
     - name: Determine Git Version Info
       id: git_vars
       run: |
@@ -73,7 +73,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build K3s Binary Native
-      if: inputs.arch != 'arm'
+      if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
           DOCKER_BUILD_SUMMARY: false
       uses: docker/build-push-action@v6
