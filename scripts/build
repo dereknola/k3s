@@ -189,7 +189,7 @@ case ${OS} in
     CGO_ENABLED=1 "${GO}" build -tags "$TAGS" -gcflags="all=${GCFLAGS}" -ldflags "$VERSIONFLAGS $LDFLAGS $STATIC" -o bin/containerd-shim-runc-v2 ./cmd/containerd-shim-runc-v2
     popd
     cp -vf ./build/src/github.com/containerd/containerd/bin/* ./bin/
-
+    echo Hello World
     echo Building runc
     pushd ./build/src/github.com/opencontainers/runc
     rm -f runc
