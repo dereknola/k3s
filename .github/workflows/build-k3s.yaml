@@ -43,7 +43,28 @@ jobs:
         cache-image: false
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      id: bx
+      uses: docker/setup-bui
+      
+    - name: Go Cache for Docker
+      uses: actions/cache@v4
+      id: gc
+      with:
+        path: |
+          go-build-cache
+          go-mod-cache
+        key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+
+    - name: Inject go-build-cache
+      uses: reproducible-containers/buildkit-cache-dance@v3
+      with:
+        builder: ${{ steps.bx.outputs.name }}
+        cache-map: |
+          {
+            "go-build-cache": "/root/.cache/go-build",
+            "go-mod-cache": "/go/pkg/mod"
+          }
+        skip-extraction: ${{ steps.gc.outputs.cache-hit }}
 
     - name: Determine Git Version Info
       id: git_vars
@@ -56,6 +77,7 @@ jobs:
           echo "dirty=${DIRTY}"
         } >> "$GITHUB_OUTPUT"
 
+  
     - name: Build K3s Binary Native
       if: inputs.arch == 'arm64' || inputs.arch == 'amd64'
       env:
