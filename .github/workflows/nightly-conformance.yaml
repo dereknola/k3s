@@ -43,7 +43,6 @@ jobs:
 
       - name: Run Parallel ${{ matrix.db }} Conformance Test
         env:
-          LABEL: "PARALLEL ${{ matrix.db | upper }}"
           ARCH: 'amd64'
         run: |
           go test ./tests/docker/conformance/conformance_test.go \
