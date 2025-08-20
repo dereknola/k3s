@@ -1,0 +1,50 @@
+name: Nightly Conformance
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write # permissions cannot be conditional, so we need to set this for all jobs
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      upload-image: true
+  conformance-parallel-db:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db: [postgres]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
+      - name: "Download K3s image"
+        uses  : actions/download-artifact@v5
+        with:
+          name: k3s-amd64
+          path: ./dist/artifacts
+
+      - name: Load K3s image into Docker
+        run: |
+          docker load -i ./dist/artifacts/k3s-image.tar
+          K3S_IMAGE_TAG=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^rancher/k3s:' | head -n1)
+          echo "K3S_IMAGE_TAG=$K3S_IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Build test image
+        run: |
+          docker build --target test-k3s -t k3s:test-amd64-nightly -f Dockerfile.test .
+
+      - name: Run Parallel ${{ matrix.db }} Conformance Test
+        env:
+          LABEL: "PARALLEL ${{ matrix.db | upper }}"
+          ARCH: 'amd64'
+        run: |
+          go test ./tests/docker/conformance/conformance_test.go \
+            -k3sImage="$K3S_IMAGE" -db ${{ matrix.db }} -ginkgo.v -ci
