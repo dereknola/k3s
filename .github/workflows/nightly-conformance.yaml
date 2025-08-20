@@ -36,16 +36,14 @@ jobs:
       - name: Load K3s image into Docker
         run: |
           docker load -i ./dist/artifacts/k3s-image.tar
-          K3S_IMAGE_TAG=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^rancher/k3s:' | head -n1)
-          echo "K3S_IMAGE_TAG=$K3S_IMAGE_TAG" >> $GITHUB_ENV
+          K3S_IMAGE=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^rancher/k3s:' | head -n1)
+          echo "K3S_IMAGE=$K3S_IMAGE" >> $GITHUB_ENV
 
       - name: Build test image
         run: |
           docker build --target test-k3s -t k3s:test-amd64-nightly -f Dockerfile.test .
 
       - name: Run Parallel ${{ matrix.db }} Conformance Test
-        env:
-          ARCH: 'amd64'
         run: |
           go test ./tests/docker/conformance/conformance_test.go \
             -k3sImage="$K3S_IMAGE" -db ${{ matrix.db }} -ginkgo.v -ci
