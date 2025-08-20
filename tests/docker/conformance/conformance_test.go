@@ -127,7 +127,9 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	if failed {
 		AddReportEntry("describe", docker.DescribeNodesAndPods(config))
-		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, append(config.Servers, config.Agents...)))
+		nodes := append(config.Servers, config.Agents...)
+		nodes = append(nodes, tester.DockerNode{Name: config.DBType})
+		AddReportEntry("docker-logs", docker.TailDockerLogs(1000, nodes))
 	}
 	if config != nil && (*ci || !failed) {
 		Expect(config.Cleanup()).To(Succeed())
