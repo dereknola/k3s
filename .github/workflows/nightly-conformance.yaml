@@ -46,4 +46,4 @@ jobs:
       - name: Run Parallel ${{ matrix.db }} Conformance Test
         run: |
           go test -v -timeout=3h ./tests/docker/conformance/conformance_test.go \
-            -k3sImage="$K3S_IMAGE" -db ${{ matrix.db }} -ginkgo.v -ci
+            -k3sImage="$K3S_IMAGE" -db ${{ matrix.db }} -ginkgo.v -ginkgo.timeout=3h -ci
