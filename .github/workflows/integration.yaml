@@ -99,7 +99,9 @@ jobs:
       uses: actions/checkout@v5
       with: {fetch-depth: 1}
     - name: Install Go
-      uses: ./.github/actions/setup-go
+      uses: actions/setup-go@v6
+      with:
+        cache: false
     - name: Download k3s binary
       uses: actions/download-artifact@v6
       with:
