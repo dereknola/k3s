@@ -11,11 +11,12 @@ runs:
         
     - name: apt-get R/W cache
       uses: actions/cache@v4
+      id: cache-packages
       # if: github.ref == 'refs/heads/main'
       with:
         path: |
-          /var/cache/apt
-          /var/lib/apt
+          ${{ runner.temp }}/var/cache/apt
+          ${{ runner.temp }}/var/lib/apt
         key: apt-cache-${{ runner.os }}-${{ hashFiles('/etc/apt/sources.list.d/*.list') }}
         restore-keys: |
           apt-cache-${{ runner.os }}-
@@ -29,6 +30,13 @@ runs:
     #     key: apt-cache-${{ runner.os }}-${{ hashFiles('/etc/apt/sources.list.d/*.list') }}
     #     restore-keys: |
     #       apt-cache-${{ runner.os }}-
+
+    - name: Restore apt-get cache
+      if: steps.cache-packages.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        sudo cp -r ${{ runner.temp }}/var/cache/apt /var/cache/apt
+        sudo cp -r ${{ runner.temp }}/var/lib/apt /var/lib/apt
 
     - name: Install vagrant and libvirt
       shell: bash
@@ -51,3 +59,10 @@ runs:
     - name: Install vagrant-libvirt plugin
       shell: bash
       run: vagrant plugin install vagrant-libvirt
+
+    - name: Copy apt-get cache for next run
+      if: steps.cache-packages.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        sudo cp -r /var/cache/apt ${{ runner.temp }}/var/cache/apt 
+        sudo cp -r /var/lib/apt ${{ runner.temp }}/var/lib/apt 
