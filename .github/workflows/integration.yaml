@@ -73,7 +73,7 @@ jobs:
         path: tests/integration/${{ matrix.itest }}/*log.txt
         retention-days: 30
     - name: On Failure, Launch Debug Session
-      uses: lhotari/action-upterm@v1
+      uses: owenthereal/action-upterm@v1
       if: ${{ failure() }}
       with:
         ## If no one connects after 5 minutes, shut down server.

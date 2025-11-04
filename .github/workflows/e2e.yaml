@@ -103,11 +103,12 @@ jobs:
           path: tests/e2e/${{ matrix.etest }}/*log.txt
           retention-days: 30
       - name: On Failure, Launch Debug Session
-        uses: lhotari/action-upterm@v1
+        uses: owenthereal/action-upterm@v1
         if: ${{ failure() }}
         with:
           ## If no one connects after 5 minutes, shut down server.
           wait-timeout-minutes: 5
+          limit-access-to-actor: true
       - name: Upload Results To Codecov
         uses: codecov/codecov-action@v5
         with:
