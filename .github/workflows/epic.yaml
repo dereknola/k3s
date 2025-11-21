@@ -8,7 +8,7 @@ permissions:
   
 jobs:
   epics:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     name: Update epic issues
     permissions:
       issues: write
