@@ -21,7 +21,7 @@ jobs:
       - name: Go Generate
         run: |
           ./scripts/download
-          ./scripts/generate
+          go generate
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: Run govulncheck
