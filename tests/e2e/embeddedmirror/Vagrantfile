@@ -40,7 +40,7 @@ def provision(vm, role, role_num, node_num)
  
   # The formatting on this is a little weird, but it allows inserting variables
   # and still using the heredoc formatting with escapped quotes
-  writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK_PREFIX}
+  writePrivateRegistry = <<~'SCRIPT'.chomp % {net: NETWORK4_PREFIX}
   mkdir -p /etc/rancher/k3s/
   echo "mirrors:
     docker.io:
