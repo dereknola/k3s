@@ -16,10 +16,14 @@ EXPECTED_ARTIFACTS=(
   dist/artifacts/k3s-airgap-images-arm64.tar.zst
   dist/artifacts/k3s-arm64
   dist/artifacts/k3s-armhf
+  dist/artifacts/k3s-riscv64
+  dist/artifacts/k3s.exe
   dist/artifacts/k3s-images.txt
   dist/artifacts/sha256sum-amd64.txt
   dist/artifacts/sha256sum-arm.txt
   dist/artifacts/sha256sum-arm64.txt
+  dist/artifacts/sha256sum-riscv64.txt
+  dist/artifacts/sha256sum-windows-amd64.txt
 )
 
 CURRENT_ARTIFACTS=(
@@ -27,8 +31,11 @@ CURRENT_ARTIFACTS=(
   dist/artifacts/sha256sum*
 )
 
-UNEXPECTED=$(IFS=$'\n'; comm -13 /dev/fd/4 /dev/fd/5 4<<<"${EXPECTED_ARTIFACTS[*]}" 5<<<"${CURRENT_ARTIFACTS[*]}")
-MISSING=$(IFS=$'\n'; comm -23 /dev/fd/4 /dev/fd/5 4<<<"${EXPECTED_ARTIFACTS[*]}" 5<<<"${CURRENT_ARTIFACTS[*]}")
+EXPECTED=$(printf '%s\n' "${EXPECTED_ARTIFACTS[@]}" | sort)
+CURRENT=$(printf '%s\n' "${CURRENT_ARTIFACTS[@]}" | sort)
+
+UNEXPECTED=$(comm -13 <(printf '%s\n' "${EXPECTED}") <(printf '%s\n' "${CURRENT}"))
+MISSING=$(comm -23 <(printf '%s\n' "${EXPECTED}") <(printf '%s\n' "${CURRENT}"))
 
 if [[ -n "${UNEXPECTED}" ]] || [[ -n "${MISSING}" ]]; then
   echo "Unexpected Files: " ${UNEXPECTED}
