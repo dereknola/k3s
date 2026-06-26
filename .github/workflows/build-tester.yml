@@ -1,0 +1,63 @@
+name: Build Tester
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build-default:
+    name: Build default
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      artifact_name: k3s-tester-default
+
+  build-amd64:
+    name: Build linux/amd64 and windows/amd64
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/amd64,windows/amd64
+      artifact_name: k3s-tester-amd64
+
+  build-arm64:
+    name: Build linux/arm64
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/arm64
+      artifact_name: k3s-tester-arm64
+
+  build-arm64-armv7:
+    name: Build linux/arm64 and linux/arm/v7
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/arm64,linux/arm/v7
+      artifact_name: k3s-tester-arm64-armv7
+
+  build-linux-amd64-arm64-armv7:
+    name: Build linux/amd64, linux/arm64, and linux/arm/v7
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
+      artifact_name: k3s-tester-linux-amd64-arm64-armv7
+
+  build-all-linux:
+    name: Build all Linux
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
+      artifact_name: k3s-tester-linux-all
+
+  build-everything:
+    name: Build everything
+    if: github.repository_owner != 'k3s-io'
+    uses: ./.github/workflows/build-k3s.yaml
+    with:
+      platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64,windows/amd64
+      artifact_name: k3s-tester-everything
