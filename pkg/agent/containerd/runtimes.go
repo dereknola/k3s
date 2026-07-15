@@ -44,6 +44,7 @@ func searchForRuntimes(potentialRuntimes runtimeConfigs, foundRuntimes runtimeCo
 func findContainerRuntimes() runtimeConfigs {
 	foundRuntimes := runtimeConfigs{}
 	findCRunContainerRuntime(foundRuntimes)
+	findKataContainerRuntime(foundRuntimes)
 	findNvidiaContainerRuntimes(foundRuntimes)
 	findWasiRuntimes(foundRuntimes)
 	return foundRuntimes
@@ -54,6 +55,17 @@ func findCRunContainerRuntime(foundRuntimes runtimeConfigs) {
 		"crun": {
 			RuntimeType: "io.containerd.runc.v2",
 			BinaryName:  "crun",
+		},
+	}
+
+	searchForRuntimes(potentialRuntimes, foundRuntimes)
+}
+
+func findKataContainerRuntime(foundRuntimes runtimeConfigs) {
+	potentialRuntimes := runtimeConfigs{
+		"kata": {
+			RuntimeType: "io.containerd.kata.v2",
+			BinaryName:  "containerd-shim-kata-v2",
 		},
 	}
 

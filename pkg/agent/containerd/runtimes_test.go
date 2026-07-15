@@ -25,11 +25,12 @@ func Test_UnitFindContainerRuntimes(t *testing.T) {
 			want: runtimeConfigs{},
 		},
 		{
-			name: "Found crun, nvidia and wasm",
+			name: "Found crun, kata, nvidia and wasm",
 			args: args{
 				exec: []string{
 					"nvidia-container-runtime",
 					"crun",
+					"containerd-shim-kata-v2",
 					"containerd-shim-lunatic-v1",
 				},
 			},
@@ -41,6 +42,10 @@ func Test_UnitFindContainerRuntimes(t *testing.T) {
 				"crun": {
 					RuntimeType: "io.containerd.runc.v2",
 					BinaryName:  "/tmp/testExecutables/crun",
+				},
+				"kata": {
+					RuntimeType: "io.containerd.kata.v2",
+					BinaryName:  "/tmp/testExecutables/containerd-shim-kata-v2",
 				},
 				"lunatic": {
 					RuntimeType: "io.containerd.lunatic.v1",

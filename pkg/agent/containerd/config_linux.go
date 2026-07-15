@@ -26,7 +26,7 @@ import (
 
 const (
 	socketPrefix = "unix://"
-	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin"
+	runtimesPath = "/usr/local/nvidia/toolkit:/opt/kwasm/bin:/opt/kata/bin"
 )
 
 // hostDirectory returns the name of the host dir for a given registry.
