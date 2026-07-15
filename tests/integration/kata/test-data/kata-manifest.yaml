@@ -1,0 +1,12 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kata-deploy
+  namespace: kube-system
+spec:
+  chart: oci://ghcr.io/kata-containers/kata-deploy-charts/kata-deploy
+  # Helm OCI charts use strict SemVer. Strip any leading "v" from the release tag.
+  version: "3.32.0"
+  targetNamespace: kube-system
+  valuesContent: |
+    k8sDistribution: k3s

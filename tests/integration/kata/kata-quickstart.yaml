@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kata-quickstart
+spec:
+  runtimeClassName: kata-qemu
+  containers:
+    - name: test
+      image: quay.io/libpod/ubuntu:latest
+      command: ["uname", "-r"]
